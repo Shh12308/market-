@@ -3,19 +3,25 @@
 @tailwind utilities;
 
 :root {
-  --background: #121212;
-  --surface: #1a1a1a;
-  --surface-light: #242424;
+  --background: #0f0f10;
+  --surface: #161618;
+  --surface-2: #1d1d20;
+  --surface-3: #252528;
 
-  --primary: #3665f3;
-  --primary-hover: #2754dd;
+  --primary: #4f7cff;
+  --primary-hover: #3b68f0;
 
-  --success: #00a650;
+  --success: #00c46a;
+  --danger: #ff4d4d;
 
   --text: #ffffff;
-  --text-muted: #b0b0b0;
+  --text-muted: #a7a7a7;
 
-  --border: #2d2d2d;
+  --border: #2a2a2e;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 }
 
 * {
@@ -29,39 +35,20 @@ html {
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(
+      circle at top,
+      #151517 0%,
+      var(--background) 40%
+    );
   color: var(--text);
   min-height: 100vh;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-button {
-  cursor: pointer;
-}
-
-.glass {
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.2s ease;
-}
-
-.card:hover {
-  background: var(--surface-light);
-  border-color: #404040;
-  transform: translateY(-2px);
-}
+/* ---------------------------
+   Layout
+---------------------------- */
 
 .market-container {
   max-width: 1400px;
@@ -70,68 +57,179 @@ button {
 }
 
 .section-title {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 700;
   margin-bottom: 1rem;
+  letter-spacing: -0.02em;
 }
+
+/* ---------------------------
+   Cards
+---------------------------- */
+
+.card {
+  background: linear-gradient(
+    180deg,
+    var(--surface),
+    var(--surface-2)
+  );
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: #3a3a40;
+  background: var(--surface-2);
+}
+
+/* ---------------------------
+   Product Grid
+---------------------------- */
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
 }
 
 .product-image {
   width: 100%;
   height: 220px;
-  background: #2a2a2a;
+  background: var(--surface-3);
 }
 
+/* ---------------------------
+   Typography
+---------------------------- */
+
 .price {
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 700;
 }
 
 .seller {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
+
+/* ---------------------------
+   Buttons
+---------------------------- */
 
 .primary-btn {
   background: var(--primary);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 16px;
-  transition: 0.2s;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .primary-btn:hover {
   background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.primary-btn:active {
+  transform: scale(0.98);
 }
 
 .secondary-btn {
   background: transparent;
   color: white;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 16px;
+  transition: 0.2s ease;
 }
 
+.secondary-btn:hover {
+  background: var(--surface-2);
+  border-color: #3a3a3a;
+}
+
+/* ---------------------------
+   Inputs
+---------------------------- */
+
+input,
+textarea,
+select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.15);
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* ---------------------------
+   Search Bar
+---------------------------- */
+
 .search-bar {
-  background: #1c1c1c;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 9999px;
   color: white;
   padding: 12px 20px;
   width: 100%;
+  transition: all 0.2s ease;
 }
 
 .search-bar:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.15);
+}
+
+/* ---------------------------
+   Utility
+---------------------------- */
+
+.glass {
+  background: rgba(22, 22, 24, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
 }
 
 .gradient-text {
-  color: var(--primary);
+  background: linear-gradient(
+    90deg,
+    var(--primary),
+    #8aa6ff
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------------------------
+   Badges
+---------------------------- */
+
+.badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
