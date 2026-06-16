@@ -3,19 +3,73 @@
 @tailwind utilities;
 
 :root {
-  --bg: #0a0a0f;
+  --background: #0a0a0f;
   --surface: #111827;
-  --surface-2: #1f2937;
+  --surface-light: #1f2937;
 
   --primary: #3b82f6;
+  --primary-hover: #2563eb;
+
   --accent: #8b5cf6;
+  --success: #10b981;
 
   --text: #ffffff;
   --text-muted: #94a3b8;
+
+  --border: #1e293b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(circle at top left, rgba(59,130,246,.15), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(139,92,246,.12), transparent 35%),
+    var(--background);
+
   color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  font-family: Inter, Arial, sans-serif;
+}
+
+.glass {
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+.card:hover {
+  border-color: var(--primary);
+  transition: .3s ease;
+}
+
+.neon {
+  box-shadow:
+    0 0 10px rgba(59,130,246,.2),
+    0 0 30px rgba(59,130,246,.1);
+}
+
+.gradient-text {
+  background: linear-gradient(
+    90deg,
+    #3b82f6,
+    #8b5cf6
+  );
+
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
