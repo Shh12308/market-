@@ -3,25 +3,37 @@
 @tailwind utilities;
 
 :root {
-  --background: #0f0f10;
-  --surface: #161618;
-  --surface-2: #1d1d20;
-  --surface-3: #252528;
+  /* Deep, rich background colors for a premium feel */
+  --background: #030304; 
+  --surface: #0a0a0b;
+  --surface-2: #121214;
+  --surface-3: #1c1c1f;
 
-  --primary: #4f7cff;
-  --primary-hover: #3b68f0;
+  /* Electric blue/violet for Crypto/Tech feel */
+  --primary: #4f46e5; 
+  --primary-glow: rgba(79, 70, 229, 0.5);
+  --primary-hover: #4338ca;
+  
+  /* Cyan accent for that "Advanced" tech look */
+  --accent: #06b6d4;
+  --accent-hover: #0891b2;
 
-  --success: #00c46a;
-  --danger: #ff4d4d;
+  --success: #10b981;
+  --warning: #f59e0b; /* For eBay-style auctions/bidding */
+  --danger: #ef4444;
 
   --text: #ffffff;
-  --text-muted: #a7a7a7;
+  --text-muted: #9ca3af;
+  --text-dim: #6b7280;
 
-  --border: #2a2a2e;
+  /* Subtle borders for high-end finish */
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.15);
 
-  --radius-sm: 8px;
+  --radius-sm: 6px;
   --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 32px;
 }
 
 * {
@@ -35,15 +47,31 @@ html {
 }
 
 body {
-  background: radial-gradient(
-      circle at top,
-      #151517 0%,
-      var(--background) 40%
-    );
+  /* Crypto-style subtle grid background */
+  background-color: var(--background);
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
   color: var(--text);
   min-height: 100vh;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar for premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-2);
 }
 
 /* ---------------------------
@@ -51,38 +79,58 @@ body {
 ---------------------------- */
 
 .market-container {
-  max-width: 1400px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 32px;
 }
 
 .section-title {
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 700;
-  margin-bottom: 1rem;
-  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.03em;
+  background: linear-gradient(to right, #fff, #9ca3af);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* ---------------------------
-   Cards
+   Cards (Premium Glass Style)
 ---------------------------- */
 
 .card {
-  background: linear-gradient(
-    180deg,
-    var(--surface),
-    var(--surface-2)
-  );
+  background: rgba(18, 18, 20, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
 }
 
 .card:hover {
-  transform: translateY(-3px);
-  border-color: #3a3a40;
-  background: var(--surface-2);
+  transform: translateY(-6px);
+  border-color: var(--primary);
+  box-shadow: 0 10px 40px -10px var(--primary-glow);
+  background: rgba(28, 28, 31, 0.8);
+}
+
+/* Crypto/Trading "Live" Indicator */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.card:hover::before {
+  opacity: 1;
 }
 
 /* ---------------------------
@@ -91,14 +139,20 @@ body {
 
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
 }
 
 .product-image {
   width: 100%;
-  height: 220px;
-  background: var(--surface-3);
+  height: 240px;
+  background: var(--surface-2);
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.card:hover .product-image {
+  transform: scale(1.05);
 }
 
 /* ---------------------------
@@ -106,31 +160,53 @@ body {
 ---------------------------- */
 
 .price {
-  font-size: 1.25rem;
+  font-size: 1.4rem;
   font-weight: 700;
+  font-variant-numeric: tabular-nums; /* Numbers line up perfectly */
+  color: var(--text);
+}
+
+.price.crypto {
+  color: var(--primary);
+  text-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
 }
 
 .seller {
-  color: var(--text-muted);
-  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.verified-icon {
+  color: var(--accent);
+  width: 14px;
+  height: 14px;
 }
 
 /* ---------------------------
-   Buttons
+   Buttons (Gradient & Glow)
 ---------------------------- */
 
 .primary-btn {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: white;
   border: none;
-  border-radius: var(--radius-sm);
-  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
   font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+  position: relative;
+  overflow: hidden;
 }
 
 .primary-btn:hover {
-  background: var(--primary-hover);
+  box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
   transform: translateY(-1px);
 }
 
@@ -139,33 +215,55 @@ body {
 }
 
 .secondary-btn {
-  background: transparent;
-  color: white;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 16px;
-  transition: 0.2s ease;
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .secondary-btn:hover {
-  background: var(--surface-2);
-  border-color: #3a3a3a;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-hover);
+}
+
+/* Bidding Button Style (eBay influence) */
+.bid-btn {
+  background: transparent;
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.bid-btn:hover {
+  background: rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
 }
 
 /* ---------------------------
-   Inputs
+   Inputs (Cyber/Tech Style)
 ---------------------------- */
 
 input,
 textarea,
 select {
-  background: var(--surface);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  padding: 14px 16px;
   width: 100%;
+  font-family: inherit;
   transition: all 0.2s ease;
+  font-size: 0.95rem;
 }
 
 input:focus,
@@ -173,31 +271,50 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.15);
+  background: var(--surface-3);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
 }
 
 textarea {
   resize: vertical;
+  min-height: 100px;
 }
 
 /* ---------------------------
-   Search Bar
+   Search Bar (Advanced)
 ---------------------------- */
 
-.search-bar {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 9999px;
-  color: white;
-  padding: 12px 20px;
+.search-wrapper {
+  position: relative;
   width: 100%;
+}
+
+.search-bar {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  color: white;
+  padding: 16px 24px 16px 56px; /* Left padding for icon */
+  width: 100%;
+  font-size: 1rem;
   transition: all 0.2s ease;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.search-icon {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-dim);
+  pointer-events: none;
 }
 
 .search-bar:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
 }
 
 /* ---------------------------
@@ -205,31 +322,56 @@ textarea {
 ---------------------------- */
 
 .glass {
-  background: rgba(22, 22, 24, 0.7);
-  backdrop-filter: blur(10px);
+  background: rgba(10, 10, 11, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
 }
 
 .gradient-text {
   background: linear-gradient(
-    90deg,
-    var(--primary),
-    #8aa6ff
+    135deg,
+    #fff 0%,
+    var(--primary) 100%
   );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
+.crypto-gradient {
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+}
+
 /* ---------------------------
-   Badges
+   Badges (Tech Status)
 ---------------------------- */
 
 .badge {
   display: inline-flex;
-  padding: 4px 10px;
+  align-items: center;
+  padding: 4px 12px;
   border-radius: 999px;
-  font-size: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.badge-new {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge-auction {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge-premium {
+  background: rgba(79, 70, 229, 0.15);
+  color: var(--primary);
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
 }
