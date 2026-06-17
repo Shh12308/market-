@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import argon2 from "argon2"; // Import Argon2
 import { z } from "zod";
 
-// Validation Schema
 const registerSchema = z.object({
   username: z.string().min(3).max(20),
   email: z.string().email(),
@@ -15,7 +14,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { username, email, password } = registerSchema.parse(body);
 
-    // 1. Check if user exists
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [{ email }, { username }],
@@ -29,10 +27,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Hash Password
-    const passwordHash = await bcrypt.hash(password, 10);
+    // Hash with Argon2
+    const passwordHash = await argon2.hash(password, {
+      type: argon2.argon2id, // Recommended type
+      memoryCost: 65536,
+      timeCost: 3,
+      parallelism: 4,
+    });
 
-    // 3. Create User
     const user = await prisma.user.create({
       data: {
         username,
@@ -41,11 +43,11 @@ export async function POST(req: Request) {
       },
     });
 
-    // 4. Create a default Store for them (Optional, based on your logic)
+    // Create default store
     await prisma.store.create({
       data: {
         name: `${username}'s Store`,
-        slug: username.toLowerCase(), // Simple slug generation
+        slug: username.toLowerCase(),
         userId: user.id,
       },
     });
