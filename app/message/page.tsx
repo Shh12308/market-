@@ -1,4 +1,4 @@
-"use client";
+"use client"; // <--- CRITICAL: Must be the first line
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
@@ -10,7 +10,7 @@ interface Conversation {
   lastMessage: string;
 }
 
-export default function MessagesPage() {
+export default function MessagePage() {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
@@ -21,7 +21,8 @@ export default function MessagesPage() {
     if (session) {
       fetch("/api/conversations")
         .then((res) => res.json())
-        .then((data) => setConversations(data));
+        .then((data) => setConversations(data))
+        .catch((err) => console.error("Failed to fetch conversations", err));
     }
   }, [session]);
 
@@ -30,7 +31,8 @@ export default function MessagesPage() {
     if (selectedChat) {
       fetch(`/api/messages?conversationId=${selectedChat}`)
         .then((res) => res.json())
-        .then((data) => setMessages(data));
+        .then((data) => setMessages(data))
+        .catch((err) => console.error("Failed to fetch messages", err));
     }
   }, [selectedChat]);
 
@@ -41,7 +43,6 @@ export default function MessagesPage() {
     
     if (!input.value.trim() || !selectedChat) return;
 
-    // Optimistic UI Update (Optional: Show message immediately)
     const tempMessage = {
       id: Date.now().toString(),
       content: input.value,
@@ -50,16 +51,24 @@ export default function MessagesPage() {
     };
     setMessages((prev) => [...prev, tempMessage]);
 
-    await fetch("/api/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversationId: selectedChat,
-        content: input.value,
-      }),
-    });
+    try {
+      await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: selectedChat,
+          content: input.value,
+        }),
+      });
 
-    input.value = ""; // Clear input
+      const res = await fetch(`/api/messages?conversationId=${selectedChat}`);
+      const updatedMessages = await res.json();
+      setMessages(updatedMessages);
+      
+      input.value = "";
+    } catch (error) {
+      console.error("Failed to send message", error);
+    }
   };
 
   return (
@@ -88,7 +97,6 @@ export default function MessagesPage() {
                   <span className="font-semibold text-sm truncate">
                     {chat.otherUser?.name || "Unknown User"}
                   </span>
-                  {/* Optional: Unread indicator */}
                   {selectedChat !== chat.id && <div className="w-2 h-2 rounded-full bg-[var(--primary)]"></div>}
                 </div>
                 <p className="text-xs opacity-80 truncate">
