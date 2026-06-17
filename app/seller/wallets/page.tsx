@@ -1,7 +1,7 @@
 import WalletManager from '@/components/seller/WalletManager';
 import Sidebar from '@/components/seller/Sidebar';
 import Header from '@/components/seller/Header';
-import { ShieldCheck, Zap } from 'lucide-react';
+import { ShieldCheck, Zap, ArrowUpRight } from 'lucide-react';
 
 export default function WalletsPage() {
   return (
