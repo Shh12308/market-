@@ -13,11 +13,21 @@ datasource db {
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
+  emailVerified DateTime?
   name          String?
-  role          String    @default("SELLER")
+  username      String?   @unique // Added for Registration
+  passwordHash  String?   // Added for Credential Auth
+  image         String?
+  role          String    @default("USER")
+  
+  // Relations
   stores        Store[]
   wallets       Wallet[]
+  sentMessages  Message[]        @relation("MessageSender")
+  conversations Conversation[]   @relation("UserConversations")
+  
   createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Store {
@@ -114,6 +124,28 @@ model Analytics {
   storeId   String
   store     Store    @relation(fields: [storeId], references: [id])
 }
+
+// --- Messaging Models ---
+
+model Message {
+  id             String       @id @default(cuid())
+  content        String
+  senderId       String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+}
+
+model Conversation {
+  id           String   @id @default(cuid())
+  participants User[]   @relation("UserConversations")
+  messages     Message[]
+  createdAt    DateTime @default(now)
+  updatedAt    DateTime @updatedAt
+}
+
+// --- Enums ---
 
 enum ProductStatus {
   ACTIVE
