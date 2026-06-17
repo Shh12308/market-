@@ -1,172 +1,235 @@
-303
-304
-305
-306
-307
-308
-309
-310
-311
-312
-313
-314
-315
-316
-317
-318
-319
-320
-321
-322
-323
-324
-325
-326
-327
-328
-329
-330
-331
-332
-333
-334
-335
-336
-337
-338
-339
-340
-341
-342
-343
-344
-345
-346
-347
-348
-349
-350
-351
-352
-353
-354
-355
-356
-357
-358
-359
-360
-361
-362
-363
-364
-365
-366
-367
-368
-369
-370
-371
-372
-373
-374
-375
-376
-377
-378
-379
-380
-381
-⌄
-⌄
-⌄
-⌄
-⌄
-⌄
-⌄
-⌄
-⌄
-⌄
-⌄
-⌄
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@import "tailwindcss";
-}
-.countdown-urgent {
-  animation: pulse-glow 1.5s ease-in-out infinite;
+:root {
+  --background: #0f0f10;
+  --surface: #161618;
+  --surface-2: #1d1d20;
+  --surface-3: #252528;
+
+  --primary: #4f7cff;
+  --primary-hover: #3b68f0;
+
+  --success: #00c46a;
+  --danger: #ff4d4d;
+
+  --text: #ffffff;
+  --text-muted: #a7a7a7;
+
+  --border: #2a2a2e;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 }
 
-/* ---------------------------
-   Shimmer Loading
----------------------------- */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.shimmer {
-  background: linear-gradient(90deg, #161618 25%, #252528 50%, #161618 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-/* ---------------------------
-   Price Ticker Animations
----------------------------- */
-@keyframes ticker-up {
-  0% { color: #00c46a; transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-  100% { color: #00c46a; transform: translateY(0); }
-}
-@keyframes ticker-down {
-  0% { color: #ff4d4d; transform: translateY(0); }
-  50% { transform: translateY(2px); }
-  100% { color: #ff4d4d; transform: translateY(0); }
-}
-
-/* ---------------------------
-   Bid Flash
----------------------------- */
-@keyframes bid-flash {
-  0% { background-color: rgba(79, 124, 255, 0.2); }
-  100% { background-color: transparent; }
-}
-.bid-flash {
-  animation: bid-flash 0.5s ease-out;
-}
-
-/* ---------------------------
-   Category Chip
----------------------------- */
-.category-chip {
-  transition: all 0.2s ease;
-  border: 1px solid #2a2a2e;
-  background: #161618;
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 0.875rem;
-  color: #a7a7a7;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.category-chip:hover {
-  border-color: #4f7cff;
-  background: rgba(79, 124, 255, 0.1);
-  color: #ffffff;
-}
-.category-chip.active {
-  border-color: #4f7cff;
-  background: rgba(79, 124, 255, 0.15);
-  color: #4f7cff;
-}
-
-/* ---------------------------
-   Number Input Arrows
----------------------------- */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
+* {
+  box-sizing: border-box;
   margin: 0;
+  padding: 0;
 }
-input[type="number"] {
-  -moz-appearance: textfield;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: radial-gradient(
+      circle at top,
+      #151517 0%,
+      var(--background) 40%
+    );
+  color: var(--text);
+  min-height: 100vh;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* ---------------------------
+   Layout
+---------------------------- */
+
+.market-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+/* ---------------------------
+   Cards
+---------------------------- */
+
+.card {
+  background: linear-gradient(
+    180deg,
+    var(--surface),
+    var(--surface-2)
+  );
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: #3a3a40;
+  background: var(--surface-2);
+}
+
+/* ---------------------------
+   Product Grid
+---------------------------- */
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.product-image {
+  width: 100%;
+  height: 220px;
+  background: var(--surface-3);
+}
+
+/* ---------------------------
+   Typography
+---------------------------- */
+
+.price {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.seller {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ---------------------------
+   Buttons
+---------------------------- */
+
+.primary-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.primary-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.primary-btn:active {
+  transform: scale(0.98);
+}
+
+.secondary-btn {
+  background: transparent;
+  color: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  transition: 0.2s ease;
+}
+
+.secondary-btn:hover {
+  background: var(--surface-2);
+  border-color: #3a3a3a;
+}
+
+/* ---------------------------
+   Inputs
+---------------------------- */
+
+input,
+textarea,
+select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.15);
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* ---------------------------
+   Search Bar
+---------------------------- */
+
+.search-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  color: white;
+  padding: 12px 20px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.search-bar:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.15);
+}
+
+/* ---------------------------
+   Utility
+---------------------------- */
+
+.glass {
+  background: rgba(22, 22, 24, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border);
+}
+
+.gradient-text {
+  background: linear-gradient(
+    90deg,
+    var(--primary),
+    #8aa6ff
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---------------------------
+   Badges
+---------------------------- */
+
+.badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
