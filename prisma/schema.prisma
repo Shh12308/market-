@@ -15,12 +15,11 @@ model User {
   email         String    @unique
   emailVerified DateTime?
   name          String?
-  username      String?   @unique // Added for Registration
-  passwordHash  String?   // Added for Credential Auth
+  username      String?   @unique
+  passwordHash  String?
   image         String?
   role          String    @default("USER")
   
-  // Relations
   stores        Store[]
   wallets       Wallet[]
   sentMessages  Message[]        @relation("MessageSender")
@@ -84,7 +83,7 @@ model OrderItem {
 model Wallet {
   id        String   @id @default(cuid())
   address   String   @unique
-  network   String   // e.g., ETH, SOL, BTC
+  network   String
   balance   Decimal  @default(0) @db.Decimal(20, 8)
   userId    String
   user      User     @relation(fields: [userId], references: [id])
@@ -100,7 +99,7 @@ model Payout {
   wallet    Wallet   @relation(fields: [walletId], references: [id])
   storeId   String
   store     Store    @relation(fields: [storeId], references: [id])
-  txHash    String?  // Blockchain transaction hash
+  txHash    String?
   createdAt DateTime @default(now())
 }
 
@@ -141,7 +140,7 @@ model Conversation {
   id           String   @id @default(cuid())
   participants User[]   @relation("UserConversations")
   messages     Message[]
-  createdAt    DateTime @default(now)
+  createdAt    DateTime @default(now()) // <--- Fixed: Added parentheses ()
   updatedAt    DateTime @updatedAt
 }
 
