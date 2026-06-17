@@ -1,0 +1,145 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  role          String    @default("SELLER")
+  stores        Store[]
+  wallets       Wallet[]
+  createdAt     DateTime  @default(now())
+}
+
+model Store {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  products    Product[]
+  orders      Order[]
+  payouts     Payout[]
+  disputes    Dispute[]
+  analytics   Analytics[]
+  createdAt   DateTime  @default(now())
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  price       Decimal   @db.Decimal(10, 2)
+  currency    String    @default("USD")
+  imageUrl    String?
+  status      ProductStatus @default(ACTIVE)
+  storeId     String
+  store       Store     @relation(fields: [storeId], references: [id])
+  orderItems  OrderItem[]
+  createdAt   DateTime  @default(now())
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  total           Decimal     @db.Decimal(10, 2)
+  currency        String      @default("USD")
+  status          OrderStatus @default(PENDING)
+  customerEmail   String
+  storeId         String
+  store           Store       @relation(fields: [storeId], references: [id])
+  items           OrderItem[]
+  dispute         Dispute?
+  createdAt       DateTime    @default(now())
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  network   String   // e.g., ETH, SOL, BTC
+  balance   Decimal  @default(0) @db.Decimal(20, 8)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  payouts   Payout[]
+  createdAt DateTime @default(now())
+}
+
+model Payout {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(10, 2)
+  status    PayoutStatus @default(PENDING)
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  txHash    String?  // Blockchain transaction hash
+  createdAt DateTime @default(now())
+}
+
+model Dispute {
+  id        String   @id @default(cuid())
+  reason    String
+  status    DisputeStatus @default(OPEN)
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Analytics {
+  id        String   @id @default(cuid())
+  date      DateTime @default(now())
+  views     Int      @default(0)
+  sales     Int      @default(0)
+  revenue   Decimal  @default(0) @db.Decimal(10, 2)
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  SOLD_OUT
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum DisputeStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
