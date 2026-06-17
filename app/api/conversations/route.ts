@@ -4,21 +4,26 @@ import { auth } from "@/lib/auth";
 
 export async function GET() {
   const session = await auth();
+  
+  // 1. Check Auth
   if (!session?.user?.id) return new NextResponse("Unauthorized", { status: 401 });
+
+  // 2. Extract User ID (Fixes TypeScript Error)
+  const currentUserId = session.user.id;
 
   const conversations = await prisma.conversation.findMany({
     where: {
       participants: {
         some: {
-          id: session.user.id,
+          id: currentUserId, // Use the variable here
         },
       },
     },
     include: {
-      participants: true, // Get user details to show names
+      participants: true, 
       messages: {
         orderBy: { createdAt: "desc" },
-        take: 1, // Get the last message for preview
+        take: 1, 
       },
     },
     orderBy: {
@@ -26,9 +31,10 @@ export async function GET() {
     },
   });
 
-  // Format data to separate "Me" from "Other User"
+  // 3. Format data to separate "Me" from "Other User"
   const formattedConversations = conversations.map((conv) => {
-    const otherUser = conv.participants.find((u) => u.id !== session.user.id);
+    const otherUser = conv.participants.find((u) => u.id !== currentUserId); // Use the variable here
+    
     return {
       id: conv.id,
       otherUser: otherUser
