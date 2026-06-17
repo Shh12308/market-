@@ -1,16 +1,16 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "@/lib/prisma"; // Your singleton instance from previous prompt
-import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/prisma";
+import argon2 from "argon2";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: {
-    strategy: "jwt", // Using JWT is easier for custom logic than database sessions
+    strategy: "jwt",
   },
   pages: {
-    signIn: "/login", // Point to your LoginPage
+    signIn: "/login",
   },
   providers: [
     CredentialsProvider({
@@ -24,26 +24,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        // 1. Find user by email
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
         });
 
         if (!user || !user.passwordHash) {
-          return null; // User not found or uses OAuth
+          return null;
         }
 
-        // 2. Verify Password
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
+        // Use Argon2 to verify
+        const isValid = await argon2.verify(
+          user.passwordHash,
+          credentials.password as string
         );
 
         if (!isValid) {
           return null;
         }
 
-        // 3. Return user object (must include id)
         return {
           id: user.id,
           email: user.email,
@@ -55,7 +53,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // Persist the user ID and role in the token
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
@@ -63,7 +60,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      // Add ID and role to the session
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
