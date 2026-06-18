@@ -30,27 +30,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email: credentials.email },
         });
 
-        if (!user || !user.passwordHash) {
-          return null;
-        }
+        if (!user) return null;
+        if (!user.passwordHash) return null;
 
         const isValid = await argon2.verify(
           user.passwordHash,
-          credentials.password as string
+          credentials.password
         );
 
-        if (!isValid) {
-          return null;
-        }
+        if (!isValid) return null;
 
         return {
           id: user.id,
           email: user.email,
-          username: user.username, // ✅ use username instead of name
+          username: user.username ?? null,
           role: user.role,
+          image: user.image ?? null,
         };
       },
     }),
@@ -61,7 +59,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
-        token.username = (user as any).username; // ✅ updated
+        token.username = (user as any).username;
       }
       return token;
     },
@@ -70,7 +68,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
-        (session.user as any).username = token.username; // ✅ updated
+        (session.user as any).username = token.username;
       }
       return session;
     },
