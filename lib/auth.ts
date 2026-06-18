@@ -1,76 +1,48 @@
-import NextAuth from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+update import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import argon2 from "argon2";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+export async function POST(req: Request) {
+  try {
+    const { email, password } = await req.json();
 
-  session: {
-    strategy: "jwt",
-  },
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
-  pages: {
-    signIn: "/login",
-  },
+    if (!user) {
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401 }
+      );
+    }
 
-  providers: [
-    CredentialsProvider({
-      name: "Credentials",
+    const valid = await argon2.verify(
+      user.passwordHash,
+      password
+    );
 
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+    if (!valid) {
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
       },
+    });
+  } catch (error) {
+    console.error(error);
 
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
-
-        if (!user) return null;
-        if (!user.passwordHash) return null;
-
-        const isValid = await argon2.verify(
-          user.passwordHash,
-          credentials.password
-        );
-
-        if (!isValid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          username: user.username ?? null,
-          role: user.role,
-          image: user.image ?? null,
-        };
-      },
-    }),
-  ],
-
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as any).role;
-        token.username = (user as any).username;
-      }
-      return token;
-    },
-
-    async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).id = token.id;
-        (session.user as any).role = token.role;
-        (session.user as any).username = token.username;
-      }
-      return session;
-    },
-  },
-});
+    return NextResponse.json(
+      { error: "Server error" },
+      { status: 500 }
+    );
+  }
+}
