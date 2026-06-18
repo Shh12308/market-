@@ -14,17 +14,17 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   emailVerified DateTime?
-  
+  name          String?
   username      String?   @unique
   passwordHash  String?
-  image         String?
+  image         String    @default("/default-avatar.png")
   role          String    @default("USER")
-  
+
   stores        Store[]
   wallets       Wallet[]
   sentMessages  Message[]        @relation("MessageSender")
   conversations Conversation[]   @relation("UserConversations")
-  
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
