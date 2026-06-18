@@ -1,48 +1,84 @@
-update import { NextResponse } from "next/server";
+import NextAuth from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import argon2 from "argon2";
 
-export async function POST(req: Request) {
-  try {
-    const { email, password } = await req.json();
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: PrismaAdapter(prisma),
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+  session: {
+    strategy: "jwt",
+  },
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
-    }
+  pages: {
+    signIn: "/login",
+  },
 
-    const valid = await argon2.verify(
-      user.passwordHash,
-      password
-    );
+  providers: [
+    CredentialsProvider({
+      name: "Credentials",
 
-    if (!valid) {
-      return NextResponse.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
-    });
-  } catch (error) {
-    console.error(error);
 
-    return NextResponse.json(
-      { error: "Server error" },
-      { status: 500 }
-    );
-  }
-}
+      async authorize(credentials) {
+        // ✅ Ensure values exist
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        // ✅ Fix TS issue by forcing string type
+        const email = credentials.email as string;
+        const password = credentials.password as string;
+
+        const user = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (!user || !user.passwordHash) {
+          return null;
+        }
+
+        const isValid = await argon2.verify(
+          user.passwordHash,
+          password
+        );
+
+        if (!isValid) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          username: user.username ?? null,
+          role: user.role,
+          image: user.image ?? null,
+        };
+      },
+    }),
+  ],
+
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as any).role;
+        token.username = (user as any).username;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
+        (session.user as any).username = token.username;
+      }
+      return session;
+    },
+  },
+});
