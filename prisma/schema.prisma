@@ -14,25 +14,40 @@ model User {
 
   username      String?   @unique
   passwordHash  String?
+
+  name          String?
   image         String    @default("/default-avatar.png")
   role          String    @default("USER")
 
+  rating        Float     @default(0)
+  reviewCount   Int       @default(0)
+
   stores        Store[]
   wallets       Wallet[]
-  sentMessages  Message[]        @relation("MessageSender")
-  conversations Conversation[]   @relation("UserConversations")
+  orders        Order[]
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  reviewsGiven  Review[] @relation("Reviewer")
+  reviewsRecv   Review[] @relation("Seller")
+
+  watchlist     Watchlist[]
+
+  sentMessages  Message[] @relation("MessageSender")
+  conversations Conversation[] @relation("UserConversations")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Store {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String   @unique
+
   description String?
+  image       String?
+
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   products    Product[]
   orders      Order[]
@@ -40,105 +55,253 @@ model Store {
   disputes    Dispute[]
   analytics   Analytics[]
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Product {
-  id          String    @id @default(cuid())
+  id          String @id @default(cuid())
+
   title       String
   description String?
-  price       Decimal   @db.Decimal(10, 2)
-  currency    String    @default("USD")
+
+  price       Decimal @db.Decimal(20, 8)
+
+  currency    String @default("USDT")
+
+  quantity    Int @default(1)
+
   imageUrl    String?
+
+  images      ProductImage[]
+
   status      ProductStatus @default(ACTIVE)
+
   storeId     String
-  store       Store     @relation(fields: [storeId], references: [id])
-  orderItems  OrderItem[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  store       Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  orderItems   OrderItem[]
+  watchlistedBy Watchlist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([status])
+}
+
+model ProductImage {
+  id        String @id @default(cuid())
+
+  url       String
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  total           Decimal     @db.Decimal(10, 2)
-  currency        String      @default("USD")
-  status          OrderStatus @default(PENDING)
-  customerEmail   String
-  storeId         String
-  store           Store       @relation(fields: [storeId], references: [id])
-  items           OrderItem[]
-  dispute         Dispute?
-  createdAt       DateTime    @default(now())
+  id            String @id @default(cuid())
+
+  total         Decimal @db.Decimal(20, 8)
+
+  currency      String @default("USDT")
+
+  status        OrderStatus @default(PENDING)
+
+  customerEmail String
+
+  buyerId       String
+  buyer         User @relation(fields: [buyerId], references: [id])
+
+  storeId       String
+  store         Store @relation(fields: [storeId], references: [id])
+
+  items         OrderItem[]
+
+  dispute       Dispute?
+
+  txs           CryptoTransaction[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([buyerId])
+  @@index([storeId])
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
+  id        String @id @default(cuid())
+
   orderId   String
-  order     Order   @relation(fields: [orderId], references: [id])
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
   productId String
   product   Product @relation(fields: [productId], references: [id])
+
   quantity  Int
+
+  @@index([orderId])
+  @@index([productId])
 }
 
 model Wallet {
-  id        String   @id @default(cuid())
-  address   String   @unique
+  id        String @id @default(cuid())
+
+  address   String @unique
+
   network   String
-  balance   Decimal  @default(0) @db.Decimal(20, 8)
+
+  balance   Decimal @default(0) @db.Decimal(20, 8)
+
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   payouts   Payout[]
+
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model CryptoTransaction {
+  id        String @id @default(cuid())
+
+  txHash    String @unique
+
+  network   String
+  currency  String
+
+  amount    Decimal @db.Decimal(20, 8)
+
+  confirmed Boolean @default(false)
+
+  orderId   String
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model Watchlist {
+  id        String @id @default(cuid())
+
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+
+  @@index([userId])
+  @@index([productId])
+}
+
+model Review {
+  id         String @id @default(cuid())
+
+  rating     Int
+  comment    String?
+
+  reviewerId String
+  reviewer   User @relation("Reviewer", fields: [reviewerId], references: [id])
+
+  sellerId   String
+  seller     User @relation("Seller", fields: [sellerId], references: [id])
+
+  createdAt  DateTime @default(now())
+
+  @@index([sellerId])
 }
 
 model Payout {
-  id        String   @id @default(cuid())
-  amount    Decimal  @db.Decimal(10, 2)
+  id        String @id @default(cuid())
+
+  amount    Decimal @db.Decimal(20, 8)
+
   status    PayoutStatus @default(PENDING)
+
   walletId  String
-  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  wallet    Wallet @relation(fields: [walletId], references: [id])
+
   storeId   String
-  store     Store    @relation(fields: [storeId], references: [id])
+  store     Store @relation(fields: [storeId], references: [id])
+
   txHash    String?
+
   createdAt DateTime @default(now())
+
+  @@index([walletId])
+  @@index([storeId])
 }
 
 model Dispute {
-  id        String   @id @default(cuid())
-  reason    String
-  status    DisputeStatus @default(OPEN)
-  orderId   String   @unique
-  order     Order    @relation(fields: [orderId], references: [id])
-  storeId   String
-  store     Store    @relation(fields: [storeId], references: [id])
-  createdAt DateTime @default(now())
+  id         String @id @default(cuid())
+
+  reason     String
+
+  status     DisputeStatus @default(OPEN)
+
+  orderId    String @unique
+  order      Order @relation(fields: [orderId], references: [id])
+
+  storeId    String
+  store      Store @relation(fields: [storeId], references: [id])
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([storeId])
 }
 
 model Analytics {
-  id        String   @id @default(cuid())
+  id        String @id @default(cuid())
+
   date      DateTime @default(now())
-  views     Int      @default(0)
-  sales     Int      @default(0)
-  revenue   Decimal  @default(0) @db.Decimal(10, 2)
+
+  views     Int @default(0)
+  sales     Int @default(0)
+
+  revenue   Decimal @default(0) @db.Decimal(20, 8)
+
   storeId   String
-  store     Store    @relation(fields: [storeId], references: [id])
+  store     Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
 }
 
 model Message {
-  id             String       @id @default(cuid())
+  id             String @id @default(cuid())
+
   content        String
+
   senderId       String
-  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  sender         User @relation("MessageSender", fields: [senderId], references: [id])
+
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
+
+  createdAt      DateTime @default(now())
+
+  @@index([conversationId])
 }
 
 model Conversation {
-  id           String   @id @default(cuid())
-  participants User[]   @relation("UserConversations")
+  id           String @id @default(cuid())
+
+  participants User[] @relation("UserConversations")
+
   messages     Message[]
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
