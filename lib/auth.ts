@@ -6,19 +6,24 @@ import argon2 from "argon2";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
+
   session: {
     strategy: "jwt",
   },
+
   pages: {
     signIn: "/login",
   },
+
   providers: [
     CredentialsProvider({
       name: "Credentials",
+
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
+
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
@@ -32,7 +37,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        // Use Argon2 to verify
         const isValid = await argon2.verify(
           user.passwordHash,
           credentials.password as string
@@ -45,24 +49,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
+          username: user.username, // ✅ use username instead of name
           role: user.role,
         };
       },
     }),
   ],
+
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
+        token.username = (user as any).username; // ✅ updated
       }
       return token;
     },
+
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
+        (session.user as any).username = token.username; // ✅ updated
       }
       return session;
     },
