@@ -54,9 +54,23 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, userId: user.id });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.errors }, { status: 400 });
-    }
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  console.error("REGISTER ERROR:", error);
+
+  if (error instanceof z.ZodError) {
+    return NextResponse.json(
+      { error: error.errors },
+      { status: 400 }
+    );
   }
+
+  return NextResponse.json(
+    {
+      error:
+        error instanceof Error
+          ? error.message
+          : String(error),
+    },
+    { status: 500 }
+  );
+}
 }
