@@ -1,11 +1,10 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useActionState } from "react";
 import { registerAction } from "@/app/actions/auth";
 
 export default function RegisterPage() {
-  // Initialize form state to capture return values (errors)
-  const [state, formAction] = useFormState(registerAction, null);
+  const [state, formAction] = useActionState(registerAction, null);
 
   return (
     <main className="flex min-h-screen items-center justify-center">
@@ -15,7 +14,6 @@ export default function RegisterPage() {
         </h1>
 
         <form action={formAction} className="space-y-4">
-          {/* name="username" is required for formData.get("username") */}
           <input
             name="username"
             type="text"
@@ -48,7 +46,6 @@ export default function RegisterPage() {
             className="w-full rounded border p-3"
           />
 
-          {/* Display error message if it exists */}
           {state?.error && (
             <p className="text-red-500 text-sm bg-red-50 p-2 rounded border border-red-200">
               {state.error}
