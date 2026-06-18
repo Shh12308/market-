@@ -6,17 +6,25 @@ export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: "Email and password required" },
+        { status: 400 }
+      );
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (!user) {
+    if (!user || !user.passwordHash) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
     }
 
+    // ✅ FIX: ensure passwordHash is string
     const valid = await argon2.verify(
       user.passwordHash,
       password
