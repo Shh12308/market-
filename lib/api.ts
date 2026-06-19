@@ -12,13 +12,26 @@ async function fetchJSON<T>(url: string): Promise<T> {
 
 export const api = {
   products: {
-    getFeatured: () => fetchJSON<ApiResponse<Product>>(`${API_BASE}/products?featured=true&limit=8`),
-    getNew: () => fetchJSON<ApiResponse<Product>>(`${API_BASE}/products?new=true&limit=8`),
+    getFeatured: () =>
+      fetchJSON<ApiResponse<Product[]>>(
+        `${API_BASE}/products?featured=true&limit=8`
+      ),
+    getNew: () =>
+      fetchJSON<ApiResponse<Product[]>>(
+        `${API_BASE}/products?new=true&limit=8`
+      ),
     getAll: (params?: Record<string, string>) => {
-      const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-      return fetchJSON<ApiResponse<Product>>(`${API_BASE}/products${qs}`);
+      const qs = params
+        ? "?" + new URLSearchParams(params).toString()
+        : "";
+      return fetchJSON<ApiResponse<Product[]>>(
+        `${API_BASE}/products${qs}`
+      );
     },
-    getByCategory: (slug: string) => fetchJSON<ApiResponse<Product>>(`${API_BASE}/products?category=${slug}`),
+    getByCategory: (slug: string) =>
+      fetchJSON<ApiResponse<Product[]>>(
+        `${API_BASE}/products?category=${slug}`
+      ),
     getById: (id: string) => fetchJSON<Product>(`${API_BASE}/products/${id}`),
   },
 
