@@ -19,7 +19,7 @@
   --accent-hover: #0891b2;
 
   --success: #10b981;
-  --warning: #f59e0b; /* For eBay-style auctions/bidding */
+  --warning: #f59e0b;
   --danger: #ef4444;
 
   --text: #ffffff;
@@ -47,7 +47,6 @@ html {
 }
 
 body {
-  /* Crypto-style subtle grid background */
   background-color: var(--background);
   background-image: 
     linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
@@ -59,7 +58,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Custom Scrollbar for premium feel */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -116,7 +114,6 @@ body {
   background: rgba(28, 28, 31, 0.8);
 }
 
-/* Crypto/Trading "Live" Indicator */
 .card::before {
   content: '';
   position: absolute;
@@ -127,6 +124,7 @@ body {
   background: linear-gradient(90deg, transparent, var(--primary), transparent);
   opacity: 0;
   transition: opacity 0.3s ease;
+  z-index: 2;
 }
 
 .card:hover::before {
@@ -162,7 +160,7 @@ body {
 .price {
   font-size: 1.4rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums; /* Numbers line up perfectly */
+  font-variant-numeric: tabular-nums;
   color: var(--text);
 }
 
@@ -187,7 +185,7 @@ body {
 }
 
 /* ---------------------------
-   Buttons (Gradient & Glow)
+   Buttons
 ---------------------------- */
 
 .primary-btn {
@@ -231,7 +229,6 @@ body {
   border-color: var(--border-hover);
 }
 
-/* Bidding Button Style (eBay influence) */
 .bid-btn {
   background: transparent;
   border: 1px solid var(--warning);
@@ -241,6 +238,7 @@ body {
   font-weight: 600;
   font-size: 0.85rem;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .bid-btn:hover {
@@ -249,7 +247,7 @@ body {
 }
 
 /* ---------------------------
-   Inputs (Cyber/Tech Style)
+   Inputs
 ---------------------------- */
 
 input,
@@ -281,7 +279,7 @@ textarea {
 }
 
 /* ---------------------------
-   Search Bar (Advanced)
+   Search Bar
 ---------------------------- */
 
 .search-wrapper {
@@ -294,11 +292,12 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   color: white;
-  padding: 16px 24px 16px 56px; /* Left padding for icon */
+  padding: 16px 24px 16px 56px;
   width: 100%;
   font-size: 1rem;
   transition: all 0.2s ease;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  font-family: inherit;
 }
 
 .search-icon {
@@ -329,11 +328,7 @@ textarea {
 }
 
 .gradient-text {
-  background: linear-gradient(
-    135deg,
-    #fff 0%,
-    var(--primary) 100%
-  );
+  background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -343,7 +338,7 @@ textarea {
 }
 
 /* ---------------------------
-   Badges (Tech Status)
+   Badges
 ---------------------------- */
 
 .badge {
@@ -374,4 +369,110 @@ textarea {
   color: var(--primary);
   border: 1px solid rgba(79, 70, 229, 0.3);
   box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
+}
+
+/* ---------------------------
+   Profile-specific dark overrides
+---------------------------- */
+
+.profile-card {
+  background: rgba(18, 18, 20, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.profile-nav-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.profile-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.profile-nav-btn.active {
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--primary);
+}
+
+.stat-card {
+  background: rgba(18, 18, 20, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  transition: all 0.3s;
+}
+
+.stat-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 0 30px rgba(79, 70, 229, 0.08);
+}
+
+.dark-divider {
+  border-color: var(--border);
+}
+
+.status-completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-shipped {
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--primary);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+.status-pending {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.status-cancelled {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.dark-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.dark-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Skeleton for dark theme */
+.dark-skeleton {
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
 }
