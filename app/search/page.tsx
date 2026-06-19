@@ -17,10 +17,8 @@ import {
   Flame,
   Sparkles,
   ExternalLink,
-  ChevronDown,
   ArrowUpDown,
   PackageOpen,
-  AlertTriangle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Product, Category } from "@/lib/types";
@@ -198,7 +196,7 @@ function ProductCard({ product }: { product: Product }) {
   );
 }
 
-// ─── Filter Sidebar (mobile drawer + desktop) ────────────────
+// ─── Filter Sidebar ──────────────────────────────────────────
 function FilterPanel({
   categories,
   selectedCategory,
@@ -222,7 +220,6 @@ function FilterPanel({
 }) {
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
           Filters
@@ -237,7 +234,6 @@ function FilterPanel({
         )}
       </div>
 
-      {/* Category */}
       <div>
         <h4 className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-3">
           Category
@@ -272,7 +268,6 @@ function FilterPanel({
         </div>
       </div>
 
-      {/* Listing Type */}
       <div>
         <h4 className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-3">
           Listing Type
@@ -299,7 +294,6 @@ function FilterPanel({
         </div>
       </div>
 
-      {/* Price Range */}
       <div>
         <h4 className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-3">
           Price Range
@@ -330,7 +324,7 @@ function FilterPanel({
   );
 }
 
-// ─── Inner Search (needs useSearchParams) ────────────────────
+// ─── Inner Search ────────────────────────────────────────────
 function SearchInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -352,7 +346,6 @@ function SearchInner() {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
 
-  // Fetch categories once
   useEffect(() => {
     api.categories
       .getAll()
@@ -360,7 +353,6 @@ function SearchInner() {
       .catch(() => setCategories([]));
   }, []);
 
-  // Fetch products whenever filters change
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
@@ -375,20 +367,15 @@ function SearchInner() {
       const res = await api.products.getAll(params);
       let filtered = res.data;
 
-      // Client-side: filter by listing type
       if (selectedType !== "all") {
         filtered = filtered.filter((p) => p.listingType === selectedType);
       }
 
-      // Client-side: filter by price range
       if (priceRange !== "all") {
         const [min, max] = priceRange.split("-").map(Number);
-        filtered = filtered.filter(
-          (p) => p.price >= min && p.price <= max
-        );
+        filtered = filtered.filter((p) => p.price >= min && p.price <= max);
       }
 
-      // Client-side: sort
       const sorted = [...filtered];
       switch (sortBy) {
         case "price_low":
@@ -426,7 +413,6 @@ function SearchInner() {
     return () => clearTimeout(timer);
   }, [fetchProducts]);
 
-  // URL sync on search submit
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const params = new URLSearchParams();
@@ -445,11 +431,13 @@ function SearchInner() {
     router.push("/search");
   };
 
-  const hasFilters =
-    query || (selectedCategory && selectedCategory !== "all") ||
-    selectedType !== "all" || priceRange !== "all";
+  const hasFilters = !!(
+    query ||
+    (selectedCategory && selectedCategory !== "all") ||
+    selectedType !== "all" ||
+    priceRange !== "all"
+  );
 
-  // Active filter pills
   const activePills: { label: string; onRemove: () => void }[] = [];
   if (query)
     activePills.push({ label: `"${query}"`, onRemove: () => setQuery("") });
@@ -508,7 +496,7 @@ function SearchInner() {
         </div>
       </form>
 
-      {/* Page title + context */}
+      {/* Title + Sort */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           {initialFeatured && (
@@ -543,7 +531,6 @@ function SearchInner() {
           )}
         </div>
 
-        {/* Sort + Filter toggle (desktop) */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="relative">
             <select
@@ -615,7 +602,7 @@ function SearchInner() {
         </div>
       )}
 
-      {/* Layout: Filters sidebar + Grid */}
+      {/* Layout */}
       <div className="flex gap-8">
         {/* Desktop Filters */}
         <aside
@@ -663,9 +650,7 @@ function SearchInner() {
                 <FilterPanel
                   categories={categories}
                   selectedCategory={selectedCategory}
-                  onCategoryChange={(v) => {
-                    setSelectedCategory(v);
-                  }}
+                  onCategoryChange={setSelectedCategory}
                   selectedType={selectedType}
                   onTypeChange={setSelectedType}
                   priceRange={priceRange}
@@ -686,7 +671,6 @@ function SearchInner() {
 
         {/* Main Grid */}
         <div className="flex-1 min-w-0">
-          {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-24">
               <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
@@ -696,7 +680,6 @@ function SearchInner() {
             </div>
           )}
 
-          {/* Empty */}
           {!loading && products.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-[var(--border)] flex items-center justify-center text-[var(--text-dim)] mb-4">
@@ -712,7 +695,10 @@ function SearchInner() {
               </p>
               <div className="flex gap-3">
                 {hasFilters && (
-                  <button onClick={clearFilters} className="secondary-btn !py-2.5">
+                  <button
+                    onClick={clearFilters}
+                    className="secondary-btn !py-2.5"
+                  >
                     Clear Filters
                   </button>
                 )}
@@ -723,7 +709,6 @@ function SearchInner() {
             </div>
           )}
 
-          {/* Product Grid */}
           {!loading && products.length > 0 && (
             <div className="product-grid">
               {products.map((product) => (
@@ -737,7 +722,7 @@ function SearchInner() {
   );
 }
 
-// ─── Main Page (Suspense boundary for useSearchParams) ──────
+// ─── Main Page ───────────────────────────────────────────────
 export default function SearchPage() {
   return (
     <Suspense
