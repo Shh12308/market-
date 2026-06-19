@@ -1,28 +1,11 @@
-async function getOrders() {
-  const res = await fetch(
-    "http://localhost:3000/api/orders"
-  );
-
-  return res.json();
-}
+import { prisma } from "@/lib/prisma";
 
 export default async function OrdersPage() {
-  const orders = await getOrders();
+  const orders = await prisma.order.findMany({
+    include: {
+      items: true,
+    },
+  });
 
-  return (
-    <div className="p-8">
-      <h1 className="text-3xl font-bold">
-        Orders
-      </h1>
-
-      {orders.map((order: any) => (
-        <div
-          key={order.id}
-          className="border p-4 mt-4"
-        >
-          {order.item}
-        </div>
-      ))}
-    </div>
-  );
+  return <div>{/* render orders */}</div>;
 }
