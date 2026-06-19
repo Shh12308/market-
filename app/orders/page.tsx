@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic"; 
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type OrderWithRelations = Awaited<
+  ReturnType<typeof prisma.order.findMany>
+>[number];
+
 export default async function OrdersPage() {
-  let orders = [];
+  let orders: OrderWithRelations[] = [];
 
   try {
     orders = await prisma.order.findMany({
