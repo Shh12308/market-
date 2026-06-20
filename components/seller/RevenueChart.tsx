@@ -1,56 +1,147 @@
 'use client';
 
-export default function RevenueChart() {
-  // Mock data for visualization
-  const data = Array.from({ length: 12 }, (_, i) => ({
-    month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i],
-    revenue: Math.floor(Math.random() * 5000) + 2000,
-    profit: Math.floor(Math.random() * 3000) + 1000,
-  }));
+import { useState } from 'react';
+import useSWR from 'swr';
+import fetcher from '@/lib/fetcher';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 
-  const maxVal = Math.max(...data.map(d => d.revenue));
+const periods = [
+  { label: '7D', value: '7d' },
+  { label: '30D', value: '30d' },
+  { label: '90D', value: '90d' },
+  { label: '1Y', value: '1y' },
+];
+
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const eth = payload[0].value;
+  const usd = (eth * 3360).toFixed(2);
 
   return (
-    <div className="card p-6 col-span-1 lg:col-span-3">
-      <div className="flex items-center justify-between mb-6">
+    <div
+      style={{
+        background: 'rgba(14, 14, 17, 0.95)',
+        border: '1px solid rgba(148, 163, 184, 0.1)',
+        borderRadius: '10px',
+        padding: '12px 16px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        backdropFilter: 'blur(12px)',
+      }}
+    >
+      <p style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px' }}>
+        {label}
+      </p>
+      <p style={{ fontSize: '15px', fontWeight: 700, color: '#f8fafc' }}>
+        {eth} ETH
+      </p>
+      <p style={{ fontSize: '11px', color: '#475569', marginTop: '2px' }}>
+        ≈ ${Number(usd).toLocaleString()}
+      </p>
+      {payload[0].payload.orders && (
+        <p style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+          {payload[0].payload.orders} orders
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default function RevenueChart() {
+  const [period, setPeriod] = useState('30d');
+  const { data, error, isLoading } = useSWR(
+    `/api/seller/revenue?period=${period}`,
+    fetcher
+  );
+
+  const totalEth = data?.data?.reduce((sum, d) => sum + d.revenue, 0) || 0;
+  const totalOrders = data?.data?.reduce((sum, d) => sum + (d.orders || 0), 0) || 0;
+
+  return (
+    <div className="card p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-lg font-bold text-white">Revenue Overview</h3>
-          <p className="text-sm text-[var(--text-muted)]">Monthly income vs profit</p>
+          <h3 className="text-lg font-bold text-white">Revenue</h3>
+          <div className="flex items-baseline gap-3 mt-1">
+            <span className="text-2xl font-extrabold text-white">
+              {totalEth.toFixed(2)} ETH
+            </span>
+            <span className="text-sm text-[var(--text-dim)]">
+              ≈ ${(totalEth * 3360).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+            <span className="text-xs text-[var(--text-faint)]">
+              {totalOrders} orders
+            </span>
+          </div>
         </div>
-        <select className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] text-sm rounded-lg p-2 focus:outline-none">
-          <option>Last 12 Months</option>
-          <option>Last 6 Months</option>
-          <option>YTD</option>
-        </select>
+        <div className="tabs-pills">
+          {periods.map((p) => (
+            <button
+              key={p.value}
+              className={`tab ${period === p.value ? 'active' : ''}`}
+              onClick={() => setPeriod(p.value)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Simple CSS-based Bar Chart */}
-      <div className="h-64 flex items-end justify-between gap-2 pt-4">
-        {data.map((item, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-2 group cursor-pointer">
-            <div className="relative w-full flex gap-1 items-end h-full justify-center rounded-t-md overflow-hidden bg-[var(--surface-2)]/50">
-              {/* Revenue Bar */}
-              <div 
-                className="w-full bg-[var(--primary)]/80 hover:bg-[var(--primary)] transition-all duration-300 rounded-t-sm relative"
-                style={{ height: `${(item.revenue / maxVal) * 100}%` }}
-              >
-                {/* Tooltip */}
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[var(--surface)] border border-[var(--border)] px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-xl">
-                  ${item.revenue}
-                </div>
-              </div>
-            </div>
-            <span className="text-xs text-[var(--text-dim)] font-medium">{item.month}</span>
-          </div>
-        ))}
-      </div>
-      
-      <div className="flex items-center justify-center gap-6 mt-4">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[var(--primary)]"></div>
-          <span className="text-xs text-[var(--text-muted)]">Revenue</span>
+      {isLoading ? (
+        <div className="h-[280px] dark-skeleton rounded-lg" />
+      ) : error ? (
+        <div className="h-[280px] flex items-center justify-center text-[var(--danger)] text-sm">
+          Failed to load chart data
         </div>
-      </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={280}>
+          <AreaChart data={data.data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="rgba(148,163,184,0.06)"
+              vertical={false}
+            />
+            <XAxis
+              dataKey="date"
+              stroke="#334155"
+              tick={{ fontSize: 11, fill: '#475569' }}
+              axisLine={{ stroke: 'rgba(148,163,184,0.06)' }}
+              tickLine={false}
+              interval="preserveStartEnd"
+            />
+            <YAxis
+              stroke="#334155"
+              tick={{ fontSize: 11, fill: '#475569' }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `${v} Ξ`}
+              width={50}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke="#6366f1"
+              fill="url(#revGrad)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{
+                r: 5,
+                fill: '#6366f1',
+                stroke: '#030304',
+                strokeWidth: 2,
+              }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
