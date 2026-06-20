@@ -1,81 +1,136 @@
 'use client';
 
+import {
+  LayoutDashboard, Package, ShoppingBag, MessageSquare, BarChart3,
+  Wallet, ArrowDownToLine, Settings, FileText, LogOut,
+  ChevronLeft, Zap, X
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LayoutDashboard, 
-  Package, 
-  ShoppingCart, 
-  DollarSign, 
-  Wallet, 
-  BarChart3, 
-  AlertCircle, 
-  Settings,
-  Store
-} from 'lucide-react';
 
-const menuItems = [
-  { href: '/seller', icon: LayoutDashboard, label: 'Overview' },
-  { href: '/seller/products', icon: Package, label: 'Products' },
-  { href: '/seller/orders', icon: ShoppingCart, label: 'Orders' },
-  { href: '/seller/wallets', icon: Wallet, label: 'Wallets' },
-  { href: '/seller/payouts', icon: DollarSign, label: 'Payouts' },
-  { href: '/seller/analytics', icon: BarChart3, label: 'Analytics' },
-  { href: '/seller/disputes', icon: AlertCircle, label: 'Disputes' },
-  { href: '/seller/settings', icon: Settings, label: 'Settings' },
+const navSections = [
+  {
+    title: 'MAIN',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/seller/dashboard' },
+      { icon: Package, label: 'Listings', href: '/seller/listings', badge: 47 },
+      { icon: ShoppingBag, label: 'Orders', href: '/seller/orders', badge: 12 },
+      { icon: MessageSquare, label: 'Messages', href: '/seller/messages', badge: 3 },
+      { icon: BarChart3, label: 'Analytics', href: '/seller/analytics' },
+    ],
+  },
+  {
+    title: 'FINANCE',
+    items: [
+      { icon: Wallet, label: 'Revenue', href: '/seller/revenue' },
+      { icon: ArrowDownToLine, label: 'Payouts', href: '/seller/payouts' },
+      { icon: Zap, label: 'Wallet', href: '/seller/wallet' },
+    ],
+  },
+  {
+    title: 'STORE',
+    items: [
+      { icon: Settings, label: 'Settings', href: '/seller/settings' },
+      { icon: FileText, label: 'Policies', href: '/seller/policies' },
+    ],
+  },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onToggle }) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 border-r border-[var(--border)] bg-[var(--background)] z-50 flex flex-col">
-      {/* Logo Area */}
-      <div className="h-20 flex items-center px-8 border-b border-[var(--border)]">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center">
-            <Store className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight">NEXUS<span className="text-[var(--primary)]">MARKET</span></span>
-        </div>
-      </div>
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onToggle}
+        />
+      )}
 
-      {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-1">
-        {menuItems.map((item) => {
-          const isActive = pathname === item.href;
-          const Icon = item.icon;
-          
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-                isActive
-                  ? 'bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary-glow)]'
-                  : 'text-[var(--text-muted)] hover:text-white hover:bg-[var(--surface-2)]'
-              }`}
-            >
-              <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'group-hover:text-[var(--primary)]'}`} />
-              <span className="font-medium text-sm">{item.label}</span>
-              {isActive && (
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/50" />
-              )}
-            </Link>
-          );
-        })}
-      </nav>
+      <aside
+        className={`
+          fixed top-0 left-0 h-screen w-64 z-50
+          bg-[var(--surface)] border-r border-[var(--border)]
+          flex flex-col
+          transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+        `}
+      >
+        {/* Logo */}
+        <div className="flex items-center justify-between h-16 px-5 border-b border-[var(--border)] flex-shrink-0">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg crypto-gradient flex items-center justify-center shadow-[0_0_12px_rgba(99,102,241,0.3)] group-hover:shadow-[0_0_20px_rgba(99,102,241,0.5)] transition-shadow">
+              <Zap className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-white text-sm tracking-tight">
+              Nexus<span className="text-[var(--primary)]">Market</span>
+            </span>
+          </Link>
+          <button
+            onClick={onToggle}
+            className="lg:hidden w-7 h-7 rounded-md flex items-center justify-center text-[var(--text-dim)] hover:text-white hover:bg-[var(--surface-3)] transition-all"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
-      {/* User Profile Snippet */}
-      <div className="p-4 border-t border-[var(--border)]">
-        <div className="glass rounded-xl p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-r from-gray-700 to-gray-600 border border-[var(--border)]"></div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">Alex Seller</p>
-            <p className="text-xs text-[var(--text-muted)] truncate">Premium Tier</p>
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 no-scrollbar">
+          {navSections.map((section) => (
+            <div key={section.title} className="mb-6">
+              <div className="px-3 mb-2 text-[0.65rem] font-bold text-[var(--text-faint)] tracking-[0.08em] uppercase">
+                {section.title}
+              </div>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className={`profile-nav-btn ${isActive ? 'active' : ''}`}
+                    >
+                      <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                      <span className="flex-1">{item.label}</span>
+                      {item.badge && (
+                        <span className="text-[0.65rem] font-bold min-w-[20px] text-center px-1.5 py-0.5 rounded-md bg-[var(--primary-muted)] text-[var(--primary)]">
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Wallet Card */}
+        <div className="p-3 border-t border-[var(--border)] flex-shrink-0">
+          <div className="p-3.5 rounded-xl bg-gradient-to-br from-[rgba(99,102,241,0.08)] to-[rgba(34,211,238,0.03)] border border-[rgba(99,102,241,0.12)]">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="text-[0.65rem] font-bold text-[var(--text-faint)] tracking-[0.06em] uppercase">
+                Wallet
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] shadow-[0_0_6px_var(--success-glow)]" />
+                <span className="text-[0.65rem] font-semibold text-[var(--success)]">
+                  Connected
+                </span>
+              </span>
+            </div>
+            <div className="font-mono text-[0.78rem] text-[var(--text-dim)] mb-1.5 tracking-wide">
+              0x7a3d...f4e2
+            </div>
+            <div className="text-lg font-bold text-white leading-tight">2.45 ETH</div>
+            <div className="text-[0.72rem] text-[var(--text-faint)] mt-0.5">
+              ≈ $8,234.50
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
