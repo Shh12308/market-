@@ -1,48 +1,39 @@
-import DisputesTable from '@/components/seller/DisputesTable';
+'use client';
+
+import { useState } from 'react';
 import Sidebar from '@/components/seller/Sidebar';
 import Header from '@/components/seller/Header';
-import { AlertTriangle, MessageCircle, FileText } from 'lucide-react';
+import { AlertTriangle, MessageSquare, Clock, CheckCircle } from 'lucide-react';
 
 export default function DisputesPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <div className="flex min-h-screen bg-[var(--background)]">
-      <Sidebar />
-      <div className="flex-1 ml-64">
-        <Header />
-        <main className="p-8">
+    <div className="flex min-h-screen">
+      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+
+      <div className="flex-1 lg:ml-64 min-h-screen flex flex-col">
+        <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+
+        <main className="flex-1 p-4 lg:p-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Resolution Center</h1>
-            <p className="text-[var(--text-muted)]">Manage customer disputes and claims efficiently.</p>
+            <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+              Disputes & <span className="gradient-text">Resolution</span>
+            </h1>
+            <p className="text-[var(--text-dim)] text-sm mt-1.5">
+              Manage and resolve order disputes.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="card p-6 border-t-4 border-t-[var(--danger)]">
-               <div className="flex items-center gap-3 mb-2">
-                 <AlertTriangle className="w-5 h-5 text-[var(--danger)]" />
-                 <h3 className="text-sm font-semibold text-[var(--text-muted)]">Open Disputes</h3>
-               </div>
-               <p className="text-3xl font-bold text-white">3</p>
-               <p className="text-xs text-[var(--danger)] mt-1">Action Required</p>
+          <div className="card p-10 flex flex-col items-center justify-center text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--warning-muted)] flex items-center justify-center mb-4">
+              <CheckCircle className="w-7 h-7 text-[var(--success)]" />
             </div>
-            <div className="card p-6 border-t-4 border-t-[var(--warning)]">
-               <div className="flex items-center gap-3 mb-2">
-                 <MessageCircle className="w-5 h-5 text-[var(--warning)]" />
-                 <h3 className="text-sm font-semibold text-[var(--text-muted)]">Under Review</h3>
-               </div>
-               <p className="text-3xl font-bold text-white">1</p>
-               <p className="text-xs text-[var(--text-muted)] mt-1">Awaiting Admin</p>
-            </div>
-            <div className="card p-6 border-t-4 border-t-[var(--success)]">
-               <div className="flex items-center gap-3 mb-2">
-                 <FileText className="w-5 h-5 text-[var(--success)]" />
-                 <h3 className="text-sm font-semibold text-[var(--text-muted)]">Resolved (30d)</h3>
-               </div>
-               <p className="text-3xl font-bold text-white">12</p>
-               <p className="text-xs text-[var(--success)] mt-1">Closed Successfully</p>
-            </div>
+            <h3 className="text-lg font-bold text-white mb-2">All Clear</h3>
+            <p className="text-sm text-[var(--text-dim)] max-w-sm">
+              No open disputes at the moment. When a buyer opens a dispute, it will appear here for you to review and respond.
+            </p>
           </div>
-
-          <DisputesTable />
         </main>
       </div>
     </div>
