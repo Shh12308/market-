@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search,
   SlidersHorizontal,
@@ -21,41 +22,95 @@ import {
   PackageOpen,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { Product, Category } from "@/lib/types";
+import type { Product, Category } from "@/lib/types";
 
-// ─── Chain Badge ─────────────────────────────────────────────
-function ChainBadge({ chain }: { chain: string }) {
-  const colors: Record<string, string> = {
-    ethereum: "badge-premium",
-    solana:
-      "bg-[rgba(6,182,212,0.1)] text-[var(--accent)] border border-[rgba(6,182,212,0.2)]",
-    polygon:
-      "bg-[rgba(99,102,241,0.1)] text-indigo-400 border border-[rgba(99,102,241,0.2)]",
-    bitcoin:
-      "bg-[rgba(249,115,22,0.1)] text-orange-400 border border-[rgba(249,115,22,0.2)]",
-    arbitrum:
-      "bg-[rgba(79,70,229,0.1)] text-[var(--primary)] border border-[rgba(79,70,229,0.2)]",
-  };
-  return (
-    <span className={`badge ${colors[chain.toLowerCase()] || colors.ethereum}`}>
-      {chain}
-    </span>
-  );
+// ─── Constants ───────────────────────────────────────────────
+const CHAIN_COLORS: Readonly<Record<string, string>> = {
+  ethereum: "badge-premium",
+  solana:
+    "bg-[rgba(6,182,212,0.1)] text-[var(--accent)] border border-[rgba(6,182,212,0.2)]",
+  polygon:
+    "bg-[rgba(99,102,241,0.1)] text-indigo-400 border border-[rgba(99,102,241,0.2)]",
+  bitcoin:
+    "bg-[rgba(249,115,22,0.1)] text-orange-400 border border-[rgba(249,115,22,0.2)]",
+  arbitrum:
+    "bg-[rgba(79,70,229,0.1)] text-[var(--primary)] border border-[rgba(79,70,229,0.2)]",
+} as const;
+
+const LISTING_TYPES = [
+  { value: "all", label: "All Types" },
+  { value: "buy_now", label: "Buy Now" },
+  { value: "auction", label: "Auction" },
+  { value: "both", label: "Buy Now / Auction" },
+] as const;
+
+const PRICE_OPTIONS = [
+  { value: "all", label: "Any Price" },
+  { value: "0-500", label: "Under $500" },
+  { value: "500-5000", label: "$500 – $5,000" },
+  { value: "5000-25000", label: "$5,000 – $25,000" },
+  { value: "25000-999999", label: "$25,000+" },
+] as const;
+
+const PRICE_LABELS: Readonly<Record<string, string>> = {
+  "0-500": "Under $500",
+  "500-5000": "$500–$5k",
+  "5000-25000": "$5k–$25k",
+  "25000-999999": "$25k+",
+};
+
+const SKELETON_COUNT = 8;
+
+// ─── Hooks ───────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setDebounced(value), delay);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [value, delay]);
+
+  return debounced;
 }
 
+// ─── Chain Badge ─────────────────────────────────────────────
+const ChainBadge = memo(function ChainBadge({ chain }: { chain: string }) {
+  const colorClass = CHAIN_COLORS[chain.toLowerCase()] ?? CHAIN_COLORS.ethereum;
+  return <span className={`badge ${colorClass}`}>{chain}</span>;
+});
+
 // ─── Product Card ────────────────────────────────────────────
-function ProductCard({ product }: { product: Product }) {
+const ProductCard = memo(function ProductCard({ product }: { product: Product }) {
   const [liked, setLiked] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const isUrgent = product.auction?.timeLeft.includes("m");
+
+  // Safe property access
+  const isUrgent = (product.auction?.timeLeft ?? "").includes("m");
+  const sellerAvatar = product.seller?.avatar;
+  const sellerName = product.seller?.displayName ?? "Unknown";
+  const isVerified = product.seller?.verified ?? false;
+  const condition = product.condition?.replace("_", " ") ?? "N/A";
+  const views = product.views ?? 0;
+  const watchers = product.watchers ?? 0;
+  const currentBid = product.auction?.currentBid ?? 0;
+  const bidsCount = product.auction?.bidsCount ?? 0;
+  const timeLeft = product.auction?.timeLeft;
+  const isFreeShipping = product.shipping?.free ?? false;
+  const shippingPrice = product.shipping?.price ?? 0;
 
   return (
     <div className="card flex flex-col">
       <div className="relative aspect-square bg-[var(--surface-2)] overflow-hidden">
-        {!imgError ? (
-          <img
+        {!imgError && product.image ? (
+          <Image
             src={product.image}
             alt={product.title}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="product-image !h-full"
             onError={() => setImgError(true)}
           />
@@ -82,9 +137,10 @@ function ProductCard({ product }: { product: Product }) {
         <button
           onClick={(e) => {
             e.preventDefault();
-            setLiked(!liked);
+            setLiked((prev) => !prev);
           }}
           className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center hover:bg-black/70 transition-all z-10"
+          aria-label={liked ? "Remove from wishlist" : "Add to wishlist"}
         >
           <Heart
             className={`w-4 h-4 transition-colors ${
@@ -95,7 +151,7 @@ function ProductCard({ product }: { product: Product }) {
           />
         </button>
 
-        {product.auction && (
+        {timeLeft && (
           <div className="absolute bottom-3 left-3 z-10">
             <span
               className={`badge flex items-center gap-1.5 ${
@@ -105,7 +161,7 @@ function ProductCard({ product }: { product: Product }) {
               }`}
             >
               <Clock className="w-3 h-3" />
-              {product.auction.timeLeft}
+              {timeLeft}
             </span>
           </div>
         )}
@@ -113,17 +169,19 @@ function ProductCard({ product }: { product: Product }) {
 
       <div className="p-4 flex-1 flex flex-col">
         <div className="seller">
-          <div className="w-5 h-5 rounded-full bg-[var(--surface-3)] overflow-hidden">
-            <img
-              src={product.seller.avatar}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <span>{product.seller.displayName}</span>
-          {product.seller.verified && (
-            <ShieldCheck className="verified-icon" />
+          {sellerAvatar && (
+            <div className="w-5 h-5 rounded-full bg-[var(--surface-3)] overflow-hidden">
+              <Image
+                src={sellerAvatar}
+                alt=""
+                width={20}
+                height={20}
+                className="w-full h-full object-cover"
+              />
+            </div>
           )}
+          <span>{sellerName}</span>
+          {isVerified && <ShieldCheck className="verified-icon" />}
         </div>
 
         <Link href={`/product/${product.id}`} className="block group/title mt-2">
@@ -133,17 +191,15 @@ function ProductCard({ product }: { product: Product }) {
         </Link>
 
         <div className="flex items-center gap-3 mt-2 text-xs text-[var(--text-dim)]">
-          <span className="capitalize">
-            {product.condition.replace("_", " ")}
-          </span>
+          <span className="capitalize">{condition}</span>
           <span className="flex items-center gap-1">
             <Eye className="w-3 h-3" />
-            {product.views}
+            {views}
           </span>
-          {product.watchers > 0 && (
+          {watchers > 0 && (
             <span className="flex items-center gap-1">
               <Heart className="w-3 h-3" />
-              {product.watchers}
+              {watchers}
             </span>
           )}
         </div>
@@ -158,10 +214,10 @@ function ProductCard({ product }: { product: Product }) {
                   Current Bid
                 </p>
                 <p className="price crypto">
-                  ${product.auction.currentBid.toLocaleString()}
+                  ${currentBid.toLocaleString()}
                 </p>
                 <p className="text-[10px] text-[var(--text-dim)]">
-                  {product.auction.bidsCount} bids
+                  {bidsCount} bids
                 </p>
               </div>
               <button className="bid-btn flex items-center gap-1.5">
@@ -174,18 +230,23 @@ function ProductCard({ product }: { product: Product }) {
                 <p className="text-[10px] text-[var(--text-dim)] uppercase tracking-wider font-semibold">
                   Price
                 </p>
-                <p className="price">${product.price.toLocaleString()}</p>
-                {product.shipping.free ? (
+                <p className="price">
+                  ${(product.price ?? 0).toLocaleString()}
+                </p>
+                {isFreeShipping ? (
                   <p className="text-[10px] text-[var(--success)] font-semibold">
                     Free shipping
                   </p>
                 ) : (
                   <p className="text-[10px] text-[var(--text-dim)]">
-                    +${product.shipping.price} shipping
+                    +${shippingPrice} shipping
                   </p>
                 )}
               </div>
-              <button className="primary-btn !py-2 !px-3">
+              <button
+                className="primary-btn !py-2 !px-3"
+                aria-label="Add to cart"
+              >
                 <ShoppingCart className="w-4 h-4" />
               </button>
             </div>
@@ -194,10 +255,10 @@ function ProductCard({ product }: { product: Product }) {
       </div>
     </div>
   );
-}
+});
 
-// ─── Filter Sidebar ──────────────────────────────────────────
-function FilterPanel({
+// ─── Filter Panel ────────────────────────────────────────────
+const FilterPanel = memo(function FilterPanel({
   categories,
   selectedCategory,
   onCategoryChange,
@@ -208,13 +269,13 @@ function FilterPanel({
   onClear,
   hasFilters,
 }: {
-  categories: Category[];
+  categories: readonly Category[];
   selectedCategory: string;
-  onCategoryChange: (v: string) => void;
+  onCategoryChange: (value: string) => void;
   selectedType: string;
-  onTypeChange: (v: string) => void;
+  onTypeChange: (value: string) => void;
   priceRange: string;
-  onPriceChange: (v: string) => void;
+  onPriceChange: (value: string) => void;
   onClear: () => void;
   hasFilters: boolean;
 }) {
@@ -234,91 +295,110 @@ function FilterPanel({
         )}
       </div>
 
+      {/* Category */}
       <div>
         <h4 className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-3">
           Category
         </h4>
         <div className="space-y-1">
-          <button
+          <FilterButton
+            active={selectedCategory === "all"}
             onClick={() => onCategoryChange("all")}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-              selectedCategory === "all"
-                ? "bg-[var(--primary)]/10 text-[var(--primary)] font-medium"
-                : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.03]"
-            }`}
           >
             All Categories
-          </button>
+          </FilterButton>
           {categories.map((cat) => (
-            <button
+            <FilterButton
               key={cat.id}
+              active={selectedCategory === cat.slug}
               onClick={() => onCategoryChange(cat.slug)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between ${
-                selectedCategory === cat.slug
-                  ? "bg-[var(--primary)]/10 text-[var(--primary)] font-medium"
-                  : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.03]"
-              }`}
             >
-              <span>{cat.name}</span>
+              <span className="flex-1">{cat.name}</span>
               <span className="text-xs text-[var(--text-dim)]">
                 {cat.productCount}
               </span>
-            </button>
+            </FilterButton>
           ))}
         </div>
       </div>
 
+      {/* Listing Type */}
       <div>
         <h4 className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-3">
           Listing Type
         </h4>
         <div className="space-y-1">
-          {[
-            { value: "all", label: "All Types" },
-            { value: "buy_now", label: "Buy Now" },
-            { value: "auction", label: "Auction" },
-            { value: "both", label: "Buy Now / Auction" },
-          ].map((opt) => (
-            <button
+          {LISTING_TYPES.map((opt) => (
+            <FilterButton
               key={opt.value}
+              active={selectedType === opt.value}
               onClick={() => onTypeChange(opt.value)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                selectedType === opt.value
-                  ? "bg-[var(--primary)]/10 text-[var(--primary)] font-medium"
-                  : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.03]"
-              }`}
             >
               {opt.label}
-            </button>
+            </FilterButton>
           ))}
         </div>
       </div>
 
+      {/* Price Range */}
       <div>
         <h4 className="text-xs font-semibold text-[var(--text-dim)] uppercase tracking-wider mb-3">
           Price Range
         </h4>
         <div className="space-y-1">
-          {[
-            { value: "all", label: "Any Price" },
-            { value: "0-500", label: "Under $500" },
-            { value: "500-5000", label: "$500 – $5,000" },
-            { value: "5000-25000", label: "$5,000 – $25,000" },
-            { value: "25000-999999", label: "$25,000+" },
-          ].map((opt) => (
-            <button
+          {PRICE_OPTIONS.map((opt) => (
+            <FilterButton
               key={opt.value}
+              active={priceRange === opt.value}
               onClick={() => onPriceChange(opt.value)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                priceRange === opt.value
-                  ? "bg-[var(--primary)]/10 text-[var(--primary)] font-medium"
-                  : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.03]"
-              }`}
             >
               {opt.label}
-            </button>
+            </FilterButton>
           ))}
         </div>
+      </div>
+    </div>
+  );
+});
+
+// ─── Filter Button (extracted for consistency) ───────────────
+const FilterButton = memo(function FilterButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center ${
+        active
+          ? "bg-[var(--primary)]/10 text-[var(--primary)] font-medium"
+          : "text-[var(--text-muted)] hover:text-white hover:bg-white/[0.03]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+});
+
+// ─── Skeleton Grid ───────────────────────────────────────────
+function SkeletonGrid() {
+  return (
+    <div className="max-w-[1440px] mx-auto px-4 sm:px-8 py-8">
+      <div className="dark-skeleton h-14 !rounded-[var(--radius-xl)] mb-8" />
+      <div className="dark-skeleton h-10 w-64 mb-6" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {Array.from({ length: SKELETON_COUNT }, (_, i) => (
+          <div key={i}>
+            <div className="dark-skeleton aspect-square !rounded-[var(--radius-lg)] mb-4" />
+            <div className="dark-skeleton h-4 w-3/4 mb-2" />
+            <div className="dark-skeleton h-6 w-1/2" />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -329,72 +409,117 @@ function SearchInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const initialQuery = searchParams.get("q") || "";
-  const initialCategory = searchParams.get("category") || "";
-  const initialFeatured = searchParams.get("featured") === "true";
-  const initialNew = searchParams.get("new") === "true";
+  // ── Derived URL params (memoized) ──
+  const initialQuery = useMemo(() => searchParams.get("q") ?? "", [searchParams]);
+  const initialCategory = useMemo(() => searchParams.get("category") ?? "all", [searchParams]);
+  const initialFeatured = useMemo(() => searchParams.get("featured") === "true", [searchParams]);
+  const initialNew = useMemo(() => searchParams.get("new") === "true", [searchParams]);
 
+  // ── Filter state ──
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedType, setSelectedType] = useState("all");
   const [priceRange, setPriceRange] = useState("all");
   const [sortBy, setSortBy] = useState("relevance");
-  const [showFilters, setShowFilters] = useState(false);
 
+  // ── UI state (separated: mobile drawer vs desktop sidebar) ──
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showDesktopFilters, setShowDesktopFilters] = useState(true);
+
+  // ── Data state ──
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
 
+  // ── Debounced query for search input ──
+  const debouncedQuery = useDebounce(query, 250);
+
+  // ── Fetch categories (once) ──
   useEffect(() => {
+    let cancelled = false;
     api.categories
       .getAll()
-      .then(setCategories)
-      .catch(() => setCategories([]));
+      .then((data) => {
+        if (!cancelled) setCategories(data);
+      })
+      .catch(() => {
+        if (!cancelled) setCategories([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  // ── Fetch products ──
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = {};
-      if (query) params.q = query;
-      if (selectedCategory && selectedCategory !== "all")
+      const params: Record<string, string> = {
+        limit: "50",
+      };
+
+      // Base filters → API
+      if (debouncedQuery) params.q = debouncedQuery;
+      if (selectedCategory && selectedCategory !== "all") {
         params.category = selectedCategory;
+      }
       if (initialFeatured) params.featured = "true";
       if (initialNew) params.new = "true";
-      params.limit = "50";
+
+      // Advanced filters → try API first
+      if (selectedType !== "all") params.type = selectedType;
+      if (priceRange !== "all") {
+        const [min, max] = priceRange.split("-").map(Number);
+        params.minPrice = String(min);
+        params.maxPrice = String(max);
+      }
+      if (sortBy !== "relevance") params.sort = sortBy;
 
       const res = await api.products.getAll(params);
       let filtered = res.data;
 
+      // ── Client-side fallback if API didn't filter ──
       if (selectedType !== "all") {
-        filtered = filtered.filter((p) => p.listingType === selectedType);
+        const hasApiFilter = filtered.every(
+          (p) => p.listingType === selectedType
+        );
+        if (!hasApiFilter) {
+          filtered = filtered.filter((p) => p.listingType === selectedType);
+        }
       }
 
       if (priceRange !== "all") {
         const [min, max] = priceRange.split("-").map(Number);
-        filtered = filtered.filter((p) => p.price >= min && p.price <= max);
+        const needsClientFilter = filtered.some(
+          (p) => (p.price ?? 0) < min || (p.price ?? 0) > max
+        );
+        if (needsClientFilter) {
+          filtered = filtered.filter((p) => {
+            const price = p.price ?? 0;
+            return price >= min && price <= max;
+          });
+        }
       }
 
+      // ── Client-side sorting ──
       const sorted = [...filtered];
       switch (sortBy) {
         case "price_low":
-          sorted.sort((a, b) => a.price - b.price);
+          sorted.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
           break;
         case "price_high":
-          sorted.sort((a, b) => b.price - a.price);
+          sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
           break;
         case "newest":
           sorted.sort(
             (a, b) =>
-              new Date(b.createdAt).getTime() -
-              new Date(a.createdAt).getTime()
+              new Date(b.createdAt ?? 0).getTime() -
+              new Date(a.createdAt ?? 0).getTime()
           );
           break;
         case "popular":
-          sorted.sort((a, b) => b.watchers - a.watchers);
-          break;
-        default:
+          sorted.sort((a, b) => (b.watchers ?? 0) - (a.watchers ?? 0));
           break;
       }
 
@@ -406,66 +531,110 @@ function SearchInner() {
     } finally {
       setLoading(false);
     }
-  }, [query, selectedCategory, selectedType, priceRange, sortBy, initialFeatured, initialNew]);
+  }, [debouncedQuery, selectedCategory, selectedType, priceRange, sortBy, initialFeatured, initialNew]);
 
   useEffect(() => {
-    const timer = setTimeout(fetchProducts, 200);
-    return () => clearTimeout(timer);
+    fetchProducts();
   }, [fetchProducts]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const params = new URLSearchParams();
-    if (query) params.set("q", query);
-    if (selectedCategory && selectedCategory !== "all")
-      params.set("category", selectedCategory);
-    router.push(`/search?${params.toString()}`);
-  };
+  // ── Handlers ──
+  const handleSearch = useCallback(
+    (e: React.FormEvent) => {
+      e.preventDefault();
+      const params = new URLSearchParams();
+      if (query) params.set("q", query);
+      if (selectedCategory && selectedCategory !== "all") {
+        params.set("category", selectedCategory);
+      }
+      router.push(`/search?${params.toString()}`);
+    },
+    [query, selectedCategory, router]
+  );
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setQuery("");
     setSelectedCategory("all");
     setSelectedType("all");
     setPriceRange("all");
     setSortBy("relevance");
     router.push("/search");
-  };
+  }, [router]);
 
-  const hasFilters = !!(
-    query ||
-    (selectedCategory && selectedCategory !== "all") ||
-    selectedType !== "all" ||
-    priceRange !== "all"
+  // ── Derived UI state ──
+  const hasFilters = useMemo(
+    () =>
+      !!(
+        query ||
+        (selectedCategory && selectedCategory !== "all") ||
+        selectedType !== "all" ||
+        priceRange !== "all"
+      ),
+    [query, selectedCategory, selectedType, priceRange]
   );
 
-  const activePills: { label: string; onRemove: () => void }[] = [];
-  if (query)
-    activePills.push({ label: `"${query}"`, onRemove: () => setQuery("") });
-  if (selectedCategory && selectedCategory !== "all") {
-    const cat = categories.find((c) => c.slug === selectedCategory);
-    activePills.push({
-      label: cat?.name || selectedCategory,
-      onRemove: () => setSelectedCategory("all"),
-    });
-  }
-  if (selectedType !== "all")
-    activePills.push({
-      label: selectedType.replace("_", " "),
-      onRemove: () => setSelectedType("all"),
-    });
-  if (priceRange !== "all") {
-    const labels: Record<string, string> = {
-      "0-500": "Under $500",
-      "500-5000": "$500–$5k",
-      "5000-25000": "$5k–$25k",
-      "25000-999999": "$25k+",
-    };
-    activePills.push({
-      label: labels[priceRange] || priceRange,
-      onRemove: () => setPriceRange("all"),
-    });
-  }
+  const activePills = useMemo(() => {
+    const pills: { id: string; label: string; onRemove: () => void }[] = [];
 
+    if (query) {
+      pills.push({ id: "query", label: `"${query}"`, onRemove: () => setQuery("") });
+    }
+    if (selectedCategory && selectedCategory !== "all") {
+      const cat = categories.find((c) => c.slug === selectedCategory);
+      pills.push({
+        id: "category",
+        label: cat?.name ?? selectedCategory,
+        onRemove: () => setSelectedCategory("all"),
+      });
+    }
+    if (selectedType !== "all") {
+      pills.push({
+        id: "type",
+        label: selectedType.replace("_", " "),
+        onRemove: () => setSelectedType("all"),
+      });
+    }
+    if (priceRange !== "all") {
+      pills.push({
+        id: "price",
+        label: PRICE_LABELS[priceRange] ?? priceRange,
+        onRemove: () => setPriceRange("all"),
+      });
+    }
+
+    return pills;
+  }, [query, selectedCategory, selectedType, priceRange, categories]);
+
+  const pageTitle = useMemo(() => {
+    if (query) return `Results for "${query}"`;
+    if (initialFeatured) return "Featured Items";
+    if (initialNew) return "New Arrivals";
+    return "Browse Marketplace";
+  }, [query, initialFeatured, initialNew]);
+
+  const emptyMessage = useMemo(() => {
+    if (query) {
+      return `We couldn't find anything matching "${query}". Try adjusting your search or filters.`;
+    }
+    return "No items match your current filters. Try removing some filters.";
+  }, [query]);
+
+  // ── Filter panel props (memoized) ──
+  const filterPanelProps = useMemo(
+    () => ({
+      categories,
+      selectedCategory,
+      onCategoryChange: setSelectedCategory,
+      selectedType,
+      onTypeChange: setSelectedType,
+      priceRange,
+      onPriceChange: setPriceRange,
+      onClear: clearFilters,
+      hasFilters,
+    }),
+    [categories, selectedCategory, selectedType, priceRange, clearFilters, hasFilters]
+  );
+
+  // ── Render ──
   return (
     <div className="max-w-[1440px] mx-auto px-4 sm:px-8 py-8">
       {/* Search Bar */}
@@ -481,8 +650,9 @@ function SearchInner() {
           />
           <button
             type="button"
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => setShowMobileFilters(true)}
             className="absolute right-[72px] top-1/2 -translate-y-1/2 lg:hidden p-2 rounded-lg text-[var(--text-dim)] hover:text-white hover:bg-white/5 transition-all"
+            aria-label="Open filters"
           >
             <SlidersHorizontal className="w-5 h-5" />
           </button>
@@ -516,13 +686,7 @@ function SearchInner() {
             </div>
           )}
           <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-            {query
-              ? `Results for "${query}"`
-              : initialFeatured
-              ? "Featured Items"
-              : initialNew
-              ? "New Arrivals"
-              : "Browse Marketplace"}
+            {pageTitle}
           </h1>
           {!loading && (
             <p className="text-sm text-[var(--text-dim)] mt-1">
@@ -539,31 +703,33 @@ function SearchInner() {
               className="dark-input !pr-9 !py-2.5 !text-sm appearance-none cursor-pointer min-w-[160px]"
               style={{ background: "var(--surface-2)" }}
             >
-              <option value="relevance" style={{ background: "var(--surface-2)" }}>
-                Relevance
-              </option>
-              <option value="newest" style={{ background: "var(--surface-2)" }}>
-                Newest First
-              </option>
-              <option value="price_low" style={{ background: "var(--surface-2)" }}>
-                Price: Low to High
-              </option>
-              <option value="price_high" style={{ background: "var(--surface-2)" }}>
-                Price: High to Low
-              </option>
-              <option value="popular" style={{ background: "var(--surface-2)" }}>
-                Most Watched
-              </option>
+              {[
+                { value: "relevance", label: "Relevance" },
+                { value: "newest", label: "Newest First" },
+                { value: "price_low", label: "Price: Low to High" },
+                { value: "price_high", label: "Price: High to Low" },
+                { value: "popular", label: "Most Watched" },
+              ].map((opt) => (
+                <option
+                  key={opt.value}
+                  value={opt.value}
+                  style={{ background: "var(--surface-2)" }}
+                >
+                  {opt.label}
+                </option>
+              ))}
             </select>
             <ArrowUpDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-dim)] pointer-events-none" />
           </div>
+
           <button
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => setShowDesktopFilters((prev) => !prev)}
             className={`hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-md)] text-sm font-medium transition-all border ${
-              showFilters || hasFilters
+              showDesktopFilters || hasFilters
                 ? "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30"
                 : "bg-white/[0.03] text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--border-hover)] hover:text-white"
             }`}
+            aria-label="Toggle filters"
           >
             <SlidersHorizontal className="w-4 h-4" />
             Filters
@@ -576,18 +742,19 @@ function SearchInner() {
         </div>
       </div>
 
-      {/* Active filter pills */}
+      {/* Active Filter Pills */}
       {activePills.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-6">
           {activePills.map((pill) => (
             <span
-              key={pill.label}
+              key={pill.id}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] text-xs font-medium border border-[var(--primary)]/20"
             >
               {pill.label}
               <button
                 onClick={pill.onRemove}
                 className="hover:text-white transition-colors"
+                aria-label={`Remove filter: ${pill.label}`}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -604,35 +771,26 @@ function SearchInner() {
 
       {/* Layout */}
       <div className="flex gap-8">
-        {/* Desktop Filters */}
+        {/* Desktop Filters Sidebar */}
         <aside
           className={`hidden lg:block w-56 flex-shrink-0 transition-all duration-300 ${
-            showFilters
+            showDesktopFilters
               ? "opacity-100 translate-x-0"
               : "opacity-0 -translate-x-8 pointer-events-none absolute"
           }`}
         >
           <div className="sticky top-20 profile-card p-5">
-            <FilterPanel
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-              selectedType={selectedType}
-              onTypeChange={setSelectedType}
-              priceRange={priceRange}
-              onPriceChange={setPriceRange}
-              onClear={clearFilters}
-              hasFilters={hasFilters}
-            />
+            <FilterPanel {...filterPanelProps} />
           </div>
         </aside>
 
         {/* Mobile Filter Drawer */}
-        {showFilters && (
+        {showMobileFilters && (
           <>
             <div
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-              onClick={() => setShowFilters(false)}
+              onClick={() => setShowMobileFilters(false)}
+              aria-hidden="true"
             />
             <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 lg:hidden overflow-y-auto">
               <div className="min-h-full profile-card p-5">
@@ -641,25 +799,16 @@ function SearchInner() {
                     Filters
                   </h3>
                   <button
-                    onClick={() => setShowFilters(false)}
+                    onClick={() => setShowMobileFilters(false)}
                     className="p-1.5 rounded-lg text-[var(--text-dim)] hover:text-white hover:bg-white/5 transition-all"
+                    aria-label="Close filters"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                <FilterPanel
-                  categories={categories}
-                  selectedCategory={selectedCategory}
-                  onCategoryChange={setSelectedCategory}
-                  selectedType={selectedType}
-                  onTypeChange={setSelectedType}
-                  priceRange={priceRange}
-                  onPriceChange={setPriceRange}
-                  onClear={clearFilters}
-                  hasFilters={hasFilters}
-                />
+                <FilterPanel {...filterPanelProps} />
                 <button
-                  onClick={() => setShowFilters(false)}
+                  onClick={() => setShowMobileFilters(false)}
                   className="primary-btn w-full mt-6"
                 >
                   Show {total} results
@@ -669,7 +818,7 @@ function SearchInner() {
           </>
         )}
 
-        {/* Main Grid */}
+        {/* Main Content Grid */}
         <div className="flex-1 min-w-0">
           {loading && (
             <div className="flex flex-col items-center justify-center py-24">
@@ -689,16 +838,11 @@ function SearchInner() {
                 No items found
               </h2>
               <p className="text-sm text-[var(--text-dim)] max-w-md mb-6">
-                {query
-                  ? `We couldn't find anything matching "${query}". Try adjusting your search or filters.`
-                  : "No items match your current filters. Try removing some filters."}
+                {emptyMessage}
               </p>
               <div className="flex gap-3">
                 {hasFilters && (
-                  <button
-                    onClick={clearFilters}
-                    className="secondary-btn !py-2.5"
-                  >
+                  <button onClick={clearFilters} className="secondary-btn !py-2.5">
                     Clear Filters
                   </button>
                 )}
@@ -725,23 +869,7 @@ function SearchInner() {
 // ─── Main Page ───────────────────────────────────────────────
 export default function SearchPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-8 py-8">
-          <div className="dark-skeleton h-14 !rounded-[var(--radius-xl)] mb-8" />
-          <div className="dark-skeleton h-10 w-64 mb-6" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <div key={i}>
-                <div className="dark-skeleton aspect-square !rounded-[var(--radius-lg)] mb-4" />
-                <div className="dark-skeleton h-4 w-3/4 mb-2" />
-                <div className="dark-skeleton h-6 w-1/2" />
-              </div>
-            ))}
-          </div>
-        </div>
-      }
-    >
+    <Suspense fallback={<SkeletonGrid />}>
       <SearchInner />
     </Suspense>
   );
