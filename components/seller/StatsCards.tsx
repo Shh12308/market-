@@ -1,134 +1,283 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import useSWR from 'swr';
 import fetcher from '@/lib/fetcher';
-import { Wallet, ShoppingBag, Package, TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import {
+  ArrowUpDown, MoreHorizontal, ChevronLeft, ChevronRight,
+  Copy, Eye, ExternalLink, AlertCircle,
+} from 'lucide-react';
 
-const statConfigs = [
-  {
-    key: 'totalRevenue',
-    label: 'Total Revenue',
-    icon: Wallet,
-    gradient: 'from-[rgba(99,102,241,0.1)] to-[rgba(99,102,241,0.02)]',
-    iconBg: 'bg-[rgba(99,102,241,0.12)]',
-    iconColor: 'text-[var(--primary)]',
-    borderHover: 'hover:border-[rgba(99,102,241,0.2)]',
-    format: (v) => `${v.eth} ETH`,
-    sub: (v) => `≈ $${v.usd.toLocaleString()}`,
-  },
-  {
-    key: 'orders',
-    label: 'Total Orders',
-    icon: ShoppingBag,
-    gradient: 'from-[rgba(52,211,153,0.1)] to-[rgba(52,211,153,0.02)]',
-    iconBg: 'bg-[var(--success-muted)]',
-    iconColor: 'text-[var(--success)]',
-    borderHover: 'hover:border-[rgba(52,211,153,0.2)]',
-    format: (v) => v.total.toLocaleString(),
-    sub: null,
-  },
-  {
-    key: 'activeListings',
-    label: 'Active Listings',
-    icon: Package,
-    gradient: 'from-[rgba(34,211,238,0.1)] to-[rgba(34,211,238,0.02)]',
-    iconBg: 'bg-[var(--accent-muted)]',
-    iconColor: 'text-[var(--accent)]',
-    borderHover: 'hover:border-[rgba(34,211,238,0.2)]',
-    format: (v) => v.total.toString(),
-    sub: null,
-  },
-  {
-    key: 'conversionRate',
-    label: 'Conversion Rate',
-    icon: TrendingUp,
-    gradient: 'from-[rgba(251,191,36,0.1)] to-[rgba(251,191,36,0.02)]',
-    iconBg: 'bg-[var(--warning-muted)]',
-    iconColor: 'text-[var(--warning)]',
-    borderHover: 'hover:border-[rgba(251,191,36,0.2)]',
-    format: (v) => `${v.value}%`,
-    sub: null,
-  },
+const statusFilters = [
+  { label: 'All', value: 'all' },
+  { label: 'Completed', value: 'completed' },
+  { label: 'Processing', value: 'shipped' },
+  { label: 'Pending', value: 'pending' },
+  { label: 'Escrow', value: 'escrow' },
 ];
 
-function StatsSkeleton() {
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="stat-card">
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 rounded-xl dark-skeleton" />
-            <div className="w-16 h-5 dark-skeleton" />
-          </div>
-          <div className="w-28 h-7 dark-skeleton mb-2" />
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center justify-center w-4 h-4 text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors"
+      title="Copy hash"
+    >
+      {copied ? (
+        <span className="text-[var(--success)] text-[0.6rem] font-bold">✓</span>
+      ) : (
+        <Copy className="w-3 h-3" />
+      )}
+    </button>
+  );
+}
+
+function ActionsDropdown({ orderId }: { orderId: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--text-muted)] hover:bg-[var(--surface-3)] transition-all"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+
+      {open && (
+        <div className="dropdown-menu right-0 w-48">
+          <button className="dropdown-item">
+            <Eye className="w-4 h-4" />
+            View Details
+          </button>
+          <button className="dropdown-item">
+            <ExternalLink className="w-4 h-4" />
+            View on Chain
+          </button>
+          <div className="dropdown-divider" />
+          <button className="dropdown-item danger">Issue Refund</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TableSkeleton() {
+  return (
+    <div className="p-6 space-y-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4">
           <div className="w-20 h-4 dark-skeleton" />
+          <div className="flex-1 h-4 dark-skeleton" />
+          <div className="w-24 h-4 dark-skeleton hidden sm:block" />
+          <div className="w-20 h-4 dark-skeleton" />
+          <div className="w-16 h-5 dark-skeleton" />
+          <div className="w-16 h-4 dark-skeleton hidden md:block" />
+          <div className="w-8 h-4 dark-skeleton" />
         </div>
       ))}
     </div>
   );
 }
 
-function StatsError({ error, mutate }) {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5">
-      <div className="col-span-full stat-card flex flex-col items-center justify-center py-10 text-center">
-        <p className="text-[var(--danger)] text-sm font-medium mb-2">Failed to load stats</p>
-        <p className="text-[var(--text-faint)] text-xs mb-4">{error.message}</p>
-        <button
-          onClick={() => mutate()}
-          className="btn btn-sm btn-outline"
-        >
-          Retry
-        </button>
-      </div>
-    </div>
+export default function OrdersTable() {
+  const [status, setStatus] = useState('all');
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const { data, error, isLoading, mutate } = useSWR(
+    `/api/seller/orders?status=${status}&page=${page}&sort=${sortKey}&dir=${sortDir}`,
+    fetcher,
+    { keepPreviousData: true }
   );
-}
 
-export default function StatsCards() {
-  const { data, error, isLoading, mutate } = useSWR('/api/seller/stats', fetcher, {
-    refreshInterval: 30000,
-  });
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('desc');
+    }
+    setPage(1);
+  };
 
-  if (isLoading) return <StatsSkeleton />;
-  if (error) return <StatsError error={error} mutate={mutate} />;
+  const handleStatusChange = (val: string) => {
+    setStatus(val);
+    setPage(1);
+  };
+
+  const orders = data?.orders || [];
+  const totalPages = data?.totalPages || 1;
+  const total = data?.total || 0;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 stagger-children">
-      {statConfigs.map((config) => {
-        const value = data[config.key];
-        const isPositive = value.change >= 0;
+    <div className="card overflow-visible">
+      <div className="p-5 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-bold text-white">Recent Orders</h3>
+          <p className="text-sm text-[var(--text-dim)] mt-0.5">
+            {total} total orders
+          </p>
+        </div>
 
-        return (
-          <div
-            key={config.key}
-            className={`stat-card bg-gradient-to-br ${config.gradient} ${config.borderHover}`}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div
-                className={`w-10 h-10 rounded-xl ${config.iconBg} flex items-center justify-center`}
-              >
-                <config.icon className={`w-5 h-5 ${config.iconColor}`} />
-              </div>
-              <div className={`price-change ${isPositive ? 'up' : 'down'}`}>
-                {isPositive ? (
-                  <ArrowUpRight className="w-3 h-3" />
-                ) : (
-                  <ArrowDownRight className="w-3 h-3" />
-                )}
-                {Math.abs(value.change)}%
-              </div>
-            </div>
-            <div className="stat-value">{config.format(value)}</div>
-            {config.sub && (
-              <div className="text-xs text-[var(--text-dim)] mt-1 font-medium">
-                {config.sub(value)}
-              </div>
-            )}
-            <div className="stat-label">{config.label}</div>
+        <div className="tabs-pills overflow-x-auto no-scrollbar">
+          {statusFilters.map((f) => (
+            <button
+              key={f.value}
+              className={`tab whitespace-nowrap ${status === f.value ? 'active' : ''}`}
+              onClick={() => handleStatusChange(f.value)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        {error ? (
+          <div className="p-10 flex flex-col items-center justify-center text-center">
+            <AlertCircle className="w-8 h-8 text-[var(--danger)] mb-3" />
+            <p className="text-sm text-[var(--danger)] font-medium mb-1">
+              Failed to load orders
+            </p>
+            <button onClick={() => mutate()} className="btn btn-sm btn-outline mt-3">
+              Retry
+            </button>
           </div>
-        );
-      })}
+        ) : isLoading && !data ? (
+          <TableSkeleton />
+        ) : orders.length === 0 ? (
+          <div className="p-10 text-center">
+            <p className="text-sm text-[var(--text-dim)]">No orders found</p>
+          </div>
+        ) : (
+          <table className="dark-table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th className="hidden lg:table-cell">Item</th>
+                <th className="hidden md:table-cell">Buyer</th>
+                <th>
+                  <button onClick={() => handleSort('amount')}>
+                    Amount <ArrowUpDown className="w-3 h-3 opacity-50" />
+                  </button>
+                </th>
+                <th>Status</th>
+                <th className="hidden sm:table-cell">
+                  <button onClick={() => handleSort('date')}>
+                    Date <ArrowUpDown className="w-3 h-3 opacity-50" />
+                  </button>
+                </th>
+                <th />
+              </tr>
+            </thead>
+
+            <tbody>
+              {orders.map((order: any) => (
+                <tr key={order.id}>
+                  <td>
+                    <div className="flex flex-col gap-1">
+                      <span className="font-mono text-xs text-[var(--primary)] font-semibold">
+                        {order.id}
+                      </span>
+
+                      {order.txHash && (
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-[0.65rem] text-[var(--text-faint)]">
+                            {order.txHash}
+                          </span>
+                          <CopyButton text={order.txHash} />
+                        </div>
+                      )}
+                    </div>
+                  </td>
+
+                  <td className="hidden lg:table-cell">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-[var(--surface-3)] overflow-hidden">
+                        <img src={order.item.image} className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-sm text-[var(--text-secondary)] line-clamp-1">
+                        {order.item.name}
+                      </span>
+                    </div>
+                  </td>
+
+                  <td className="hidden md:table-cell">
+                    <span className="text-sm text-[var(--text-muted)]">
+                      {order.buyer.name}
+                    </span>
+                  </td>
+
+                  <td>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-white">
+                        {order.amount.crypto}
+                      </span>
+                      <span className="text-[0.7rem] text-[var(--text-faint)]">
+                        {order.amount.usd}
+                      </span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <span className={`status-pill status-${order.status}`}>
+                      {order.status}
+                    </span>
+                  </td>
+
+                  <td className="hidden sm:table-cell">
+                    {new Date(order.date).toLocaleDateString()}
+                  </td>
+
+                  <td>
+                    <ActionsDropdown orderId={order.id} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between p-4 border-t border-[var(--border)]">
+          <span className="text-xs text-[var(--text-faint)]">
+            Page {page} of {totalPages}
+          </span>
+
+          <div className="pagination">
+            <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft />
+            </button>
+
+            <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <ChevronRight />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
