@@ -8,6 +8,12 @@ import {
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+// ✅ FIX: proper prop typing
+type SidebarProps = {
+  isOpen: boolean;
+  onToggle: () => void;
+};
+
 const navSections = [
   {
     title: 'MAIN',
@@ -36,7 +42,7 @@ const navSections = [
   },
 ];
 
-export default function Sidebar({ isOpen, onToggle }) {
+export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -68,6 +74,7 @@ export default function Sidebar({ isOpen, onToggle }) {
               Nexus<span className="text-[var(--primary)]">Market</span>
             </span>
           </Link>
+
           <button
             onClick={onToggle}
             className="lg:hidden w-7 h-7 rounded-md flex items-center justify-center text-[var(--text-dim)] hover:text-white hover:bg-[var(--surface-3)] transition-all"
@@ -83,9 +90,11 @@ export default function Sidebar({ isOpen, onToggle }) {
               <div className="px-3 mb-2 text-[0.65rem] font-bold text-[var(--text-faint)] tracking-[0.08em] uppercase">
                 {section.title}
               </div>
+
               <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const isActive = pathname === item.href;
+
                   return (
                     <Link
                       key={item.label}
@@ -94,6 +103,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                     >
                       <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
                       <span className="flex-1">{item.label}</span>
+
                       {item.badge && (
                         <span className="text-[0.65rem] font-bold min-w-[20px] text-center px-1.5 py-0.5 rounded-md bg-[var(--primary-muted)] text-[var(--primary)]">
                           {item.badge}
@@ -114,6 +124,7 @@ export default function Sidebar({ isOpen, onToggle }) {
               <span className="text-[0.65rem] font-bold text-[var(--text-faint)] tracking-[0.06em] uppercase">
                 Wallet
               </span>
+
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] shadow-[0_0_6px_var(--success-glow)]" />
                 <span className="text-[0.65rem] font-semibold text-[var(--success)]">
@@ -121,10 +132,15 @@ export default function Sidebar({ isOpen, onToggle }) {
                 </span>
               </span>
             </div>
+
             <div className="font-mono text-[0.78rem] text-[var(--text-dim)] mb-1.5 tracking-wide">
               0x7a3d...f4e2
             </div>
-            <div className="text-lg font-bold text-white leading-tight">2.45 ETH</div>
+
+            <div className="text-lg font-bold text-white leading-tight">
+              2.45 ETH
+            </div>
+
             <div className="text-[0.72rem] text-[var(--text-faint)] mt-0.5">
               ≈ $8,234.50
             </div>
