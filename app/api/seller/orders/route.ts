@@ -3,16 +3,6 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-interface OrderRow {
-  id: string;
-  item: { name: string; image: string | null };
-  buyer: { name: string | null };
-  amount: { crypto: string; usd: string; usdRaw: number };
-  status: string;
-  date: string;
-  txHash: string | null;
-}
-
 const CRYPTO_RATES: Record<string, number> = {
   ETH: 3360,
   BTC: 67500,
@@ -28,21 +18,15 @@ export async function GET(request: NextRequest) {
     const dir = searchParams.get('dir') || 'desc';
     const pageSize = 8;
 
-    // Build where clause
     const where: any = {};
     if (status !== 'all') {
       where.status = status;
     }
 
-    // Build orderBy
-    const orderBy: any = {};
-    if (sort === 'date') {
-      orderBy.createdAt = dir;
-    } else if (sort === 'amount') {
-      orderBy.totalUsd = dir;
-    } else {
-      orderBy.createdAt = dir;
-    }
+    const orderBy: any =
+      sort === 'amount'
+        ? { totalUsd: dir }
+        : { createdAt: dir };
 
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
@@ -51,9 +35,9 @@ export async function GET(request: NextRequest) {
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {
-          buyer: { select: { name: true } },
+          buyer: true,
           items: {
-            include: { product: { select: { name: true, images: true } } },
+            include: { product: true },
             take: 1,
           },
         },
@@ -61,71 +45,55 @@ export async function GET(request: NextRequest) {
       prisma.order.count({ where }),
     ]);
 
-    const rows: OrderRow[] = orders.map((order) => {
-      const firstItem = order.items[0];
-      const usdRaw = order.totalUsd ?? 0;
-      const currency = order.cryptoCurrency || 'ETH';
+    const rows = orders.map((order: any) => {
+      const firstItem = order.items?.[0];
+      const product = firstItem?.product;
+      const usdRaw = order.totalUsd ?? order.total ?? order.amount ?? 0;
+      const currency = order.cryptoCurrency ?? order.currency ?? 'ETH';
       const rate = CRYPTO_RATES[currency] || 3360;
       const cryptoAmount =
         currency === 'USDC'
-          ? usdRaw.toFixed(2)
-          : (usdRaw / rate).toFixed(currency === 'BTC' ? 6 : 4);
+          ? Number(usdRaw).toFixed(2)
+          : (Number(usdRaw) / rate).toFixed(currency === 'BTC' ? 6 : 4);
 
-      // Use first product image, or null
-      const productImage = firstItem?.product?.images
-        ? (Array.isArray(firstItem.product.images)
-            ? firstItem.product.images[0]
-            : firstItem.product.images)
-        : null;
+      // Safely get image — handles string, string[], or missing
+      let image: string | null = null;
+      const imgRaw = product?.image ?? product?.images ?? product?.coverImage ?? product?.thumbnail ?? null;
+      if (imgRaw) {
+        const imgStr = Array.isArray(imgRaw) ? imgRaw[0] : imgRaw;
+        image = typeof imgStr === 'string'
+          ? imgStr.startsWith('http') ? imgStr : `/uploads/${imgStr}`
+          : null;
+      }
 
-      // Build full image URL if it's a relative path
-      const image = productImage
-        ? productImage.startsWith('http')
-          ? productImage
-          : `/uploads/${productImage}`
-        : null;
+      // Safely get product name
+      const productName = product?.title ?? product?.name ?? product?.productName ?? 'Product';
+
+      // Safely get buyer name
+      const buyerName = order.buyer?.name ?? order.buyer?.username ?? order.buyer?.email ?? 'Unknown';
 
       return {
         id: order.id.startsWith('ORD-') ? order.id : `ORD-${order.id.substring(0, 6).toUpperCase()}`,
-        item: {
-          name: firstItem?.product?.name || 'Deleted Product',
-          image,
-        },
-        buyer: {
-          name: order.buyer?.name || 'Unknown',
-        },
+        item: { name: productName, image },
+        buyer: { name: buyerName },
         amount: {
           crypto: `${cryptoAmount} ${currency}`,
-          usd: `$${usdRaw.toLocaleString()}`,
-          usdRaw,
+          usd: `$${Number(usdRaw).toLocaleString()}`,
+          usdRaw: Number(usdRaw),
         },
-        status: order.status.toLowerCase(),
-        date: order.createdAt.toISOString(),
-        txHash: order.txHash || null,
-      };
+        status: (order.status ?? 'pending').toLowerCase(),
+        date: (order.createdAt ?? new Date()).toISOString(),
+        txHash: order.txHash ?? order.transactionHash ?? null,
+      },
     });
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-    return NextResponse.json({
-      orders: rows,
-      total,
-      totalPages,
-      page,
-    });
+    return NextResponse.json({ orders: rows, total, totalPages, page });
   } catch (error: any) {
     console.error('Orders fetch error:', error);
-
-    // If Prisma fields don't match schema, return helpful error
-    if (error?.code === 'P2025' || error?.code === 'P2021') {
-      return NextResponse.json(
-        { error: 'Database schema mismatch — check model field names in route.ts' },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json(
-      { error: 'Failed to fetch orders' },
+      { error: 'Failed to fetch orders', detail: error.message },
       { status: 500 }
     );
   }
