@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
           ? Number(usdRaw).toFixed(2)
           : (Number(usdRaw) / rate).toFixed(currency === 'BTC' ? 6 : 4);
 
-      // Safely get image — handles string, string[], or missing
       let image: string | null = null;
       const imgRaw = product?.image ?? product?.images ?? product?.coverImage ?? product?.thumbnail ?? null;
       if (imgRaw) {
@@ -66,10 +65,7 @@ export async function GET(request: NextRequest) {
           : null;
       }
 
-      // Safely get product name
       const productName = product?.title ?? product?.name ?? product?.productName ?? 'Product';
-
-      // Safely get buyer name
       const buyerName = order.buyer?.name ?? order.buyer?.username ?? order.buyer?.email ?? 'Unknown';
 
       return {
@@ -84,7 +80,7 @@ export async function GET(request: NextRequest) {
         status: (order.status ?? 'pending').toLowerCase(),
         date: (order.createdAt ?? new Date()).toISOString(),
         txHash: order.txHash ?? order.transactionHash ?? null,
-      },
+      };
     });
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
