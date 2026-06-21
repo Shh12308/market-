@@ -3,16 +3,24 @@
 import { Search, Bell, Menu, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
-export default function Header({ onMenuToggle }) {
+type HeaderProps = {
+  onMenuToggle: () => void;
+};
+
+export default function Header({ onMenuToggle }: HeaderProps) {
   const [profileOpen, setProfileOpen] = useState(false);
-  const profileRef = useRef(null);
+  const profileRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const handleClick = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(e.target as Node)
+      ) {
         setProfileOpen(false);
       }
     };
+
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
