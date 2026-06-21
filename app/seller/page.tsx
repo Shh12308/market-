@@ -24,7 +24,8 @@ export default function SellerDashboard() {
           isSidebarOpen ? 'ml-64' : 'ml-0'
         }`}
       >
-        <Header />
+        {/* ✅ FIX HERE */}
+        <Header onMenuToggle={toggleSidebar} />
 
         <main className="p-8">
           <div className="mb-8">
@@ -43,7 +44,6 @@ export default function SellerDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <RevenueChart />
 
-            {/* Quick Actions Card */}
             <div className="card p-6">
               <h3 className="text-lg font-bold text-white mb-4">
                 Quick Actions
@@ -60,7 +60,9 @@ export default function SellerDashboard() {
                 </button>
 
                 <button className="w-full text-left px-4 py-3 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--surface-3)] transition-all flex items-center justify-between group">
-                  <span className="text-sm text-white">Request Payout</span>
+                  <span className="text-sm text-white">
+                    Request Payout
+                  </span>
                   <span className="text-[var(--primary)] opacity-0 group-hover:opacity-100 transition-opacity">
                     →
                   </span>
