@@ -12,7 +12,7 @@ type Payout = {
 };
 
 interface PayoutTableProps {
-  payouts: Payout[];
+  payouts?: Payout[];
 }
 
 const getStatusIcon = (status: Payout['status']) => {
@@ -28,7 +28,9 @@ const getStatusIcon = (status: Payout['status']) => {
   }
 };
 
-export default function PayoutTable({ payouts }: PayoutTableProps) {
+export default function PayoutTable({
+  payouts = [],
+}: PayoutTableProps) {
   return (
     <div className="card overflow-hidden">
       <div className="p-6 border-b border-[var(--border)]">
@@ -55,9 +57,13 @@ export default function PayoutTable({ payouts }: PayoutTableProps) {
                   key={payout.id}
                   className="hover:bg-[var(--surface-2)]/50 transition-colors"
                 >
-                  <td className="px-6 py-4 font-medium text-white">{payout.id}</td>
+                  <td className="px-6 py-4 font-medium text-white">
+                    {payout.id}
+                  </td>
                   <td className="px-6 py-4">{payout.date}</td>
-                  <td className="px-6 py-4 text-white font-mono">{payout.amount}</td>
+                  <td className="px-6 py-4 text-white font-mono">
+                    {payout.amount}
+                  </td>
                   <td className="px-6 py-4">{payout.method}</td>
 
                   <td className="px-6 py-4">
