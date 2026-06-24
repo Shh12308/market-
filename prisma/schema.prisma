@@ -70,8 +70,8 @@ model Product {
   price       Decimal @db.Decimal(20, 8)
   category    String
 
-  type        String?   // 👈 add this
-  tags        String?   // 👈 add this
+  type        String?
+  tags        String?
 
   currency    String @default("USDT")
   quantity    Int @default(1)
@@ -84,12 +84,20 @@ model Product {
   shipsFrom   String?
 
   storeId     String
-  store       Store @relation(fields: [storeId], references: [id])
+  store       Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // ✅ REQUIRED RELATIONS (THIS FIXES YOUR BUILD ERROR)
+  images        ProductImage[]
+  orderItems    OrderItem[]
+  watchlistedBy Watchlist[]
 
   status      ProductStatus @default(ACTIVE)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([storeId])
+  @@index([status])
 }
 
 model ProductImage {
