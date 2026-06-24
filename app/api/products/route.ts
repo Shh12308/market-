@@ -7,22 +7,26 @@ export async function POST(req: Request) {
     const session = await auth();
 
     if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      include: { stores: true },
     });
 
     if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const store = user.stores[0]; // ⚠️ assumes 1 store per user
+
+    if (!store) {
       return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
+        { error: "No store found for user" },
+        { status: 400 }
       );
     }
 
@@ -31,17 +35,23 @@ export async function POST(req: Request) {
         title: body.title,
         description: body.description,
         category: body.category,
-        type: body.productType,
+
+        type: body.productType || null,
+        tags: body.tags || null,
+
         price: Number(body.price),
-        thumbnail: body.thumbnail || "",
-        tags: body.tags || "",
+        currency: "USDT",
+        quantity: body.inventory ? Number(body.inventory) : 1,
+
+        imageUrl: body.thumbnail || null,
+
         inventory: body.inventory ? Number(body.inventory) : null,
         weight: body.weight ? Number(body.weight) : null,
-        shippingCost: body.shippingCost
-          ? Number(body.shippingCost)
-          : null,
+        shippingCost: body.shippingCost ? Number(body.shippingCost) : null,
         shipsFrom: body.shipsFrom || null,
-        userId: user.id,
+
+        storeId: store.id,
+        status: "ACTIVE",
       },
     });
 
