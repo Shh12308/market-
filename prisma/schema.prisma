@@ -69,6 +69,8 @@ model Product {
 
   price       Decimal @db.Decimal(20, 8)
 
+category     String
+
   currency    String @default("USDT")
 
   quantity    Int @default(1)
