@@ -9,12 +9,14 @@ export default function SellPage() {
   const [productType, setProductType] = useState("physical");
   const [loading, setLoading] = useState(false);
 
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+
   const [form, setForm] = useState({
     title: "",
     description: "",
-    category: "Art",
+    category: "Electronics",
     price: "",
-    thumbnail: "",
     tags: "",
     inventory: "",
     weight: "",
@@ -23,134 +25,199 @@ export default function SellPage() {
   });
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement |
+      HTMLTextAreaElement |
+      HTMLSelectElement
+    >
   ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleImage = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setImage(file);
+    setPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
+
     setLoading(true);
 
     try {
-      const res = await fetch("/api/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...form,
-          productType,
-        }),
-      });
+      let imageUrl = "";
 
-      if (!res.ok) throw new Error("Failed to create product");
+      if (image) {
+        const uploadForm = new FormData();
+        uploadForm.append("file", image);
 
-      const data = await res.json();
+        const uploadRes = await fetch(
+          "/api/upload",
+          {
+            method: "POST",
+            body: uploadForm,
+          }
+        );
 
-      router.push(`/item/${data.id}`);
+        const uploadData =
+          await uploadRes.json();
+
+        imageUrl = uploadData.url;
+      }
+
+      const res = await fetch(
+        "/api/products",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            ...form,
+            productType,
+            imageUrl,
+          }),
+        }
+      );
+
+      if (!res.ok)
+        throw new Error(
+          "Failed to create product"
+        );
+
+      const product = await res.json();
+
+      router.push(
+        `/item/${product.id}`
+      );
     } catch (err) {
-      alert("Failed to list product");
+      console.error(err);
+      alert("Failed to create listing");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Sell Product</h1>
+    <div className="max-w-5xl mx-auto p-6">
+      <h1 className="text-4xl font-bold mb-8">
+        Sell an Item
+      </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Product Name */}
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6"
+      >
         <input
           name="title"
           value={form.title}
           onChange={handleChange}
-          placeholder="Product Name"
+          placeholder="What are you selling?"
           className="w-full border rounded-lg p-3"
+          required
         />
 
-        {/* Description */}
         <textarea
           name="description"
           value={form.description}
           onChange={handleChange}
           rows={6}
-          placeholder="Description"
+          placeholder="Describe your item..."
           className="w-full border rounded-lg p-3"
+          required
         />
 
-        {/* Category */}
+        <div>
+          <label className="block mb-2 font-medium">
+            Photos
+          </label>
+
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImage}
+            className="w-full"
+          />
+
+          {preview && (
+            <img
+              src={preview}
+              alt="Preview"
+              className="mt-4 h-48 w-48 object-cover rounded-lg border"
+            />
+          )}
+        </div>
+
         <select
           name="category"
           value={form.category}
           onChange={handleChange}
           className="w-full border rounded-lg p-3"
         >
-          <option>Art</option>
-          <option>Photography</option>
-          <option>Videos</option>
-          <option>Templates</option>
-          <option>Software</option>
-          <option>Music</option>
-          <option>Documents</option>
-          <option>E-books</option>
-          <option>Collectibles</option>
           <option>Electronics</option>
+          <option>Fashion</option>
+          <option>Collectibles</option>
+          <option>Home & Garden</option>
+          <option>Sports</option>
+          <option>Art</option>
+          <option>Books</option>
           <option>Other</option>
         </select>
 
-        {/* Product Type */}
         <select
           value={productType}
-          onChange={(e) => setProductType(e.target.value)}
+          onChange={(e) =>
+            setProductType(
+              e.target.value
+            )
+          }
           className="w-full border rounded-lg p-3"
         >
-          <option value="physical">Physical Product</option>
-          <option value="image">Image</option>
-          <option value="video">Video</option>
-          <option value="document">Document</option>
-          <option value="audio">Audio</option>
-          <option value="software">Software</option>
-          <option value="other">Other Digital Product</option>
+          <option value="physical">
+            Physical Item
+          </option>
+          <option value="digital">
+            Digital Product
+          </option>
         </select>
 
-        {/* Price */}
         <input
+          type="number"
           name="price"
           value={form.price}
           onChange={handleChange}
-          type="number"
           placeholder="Price"
           className="w-full border rounded-lg p-3"
+          required
         />
 
-        {/* Thumbnail */}
-        <input
-          name="thumbnail"
-          value={form.thumbnail}
-          onChange={handleChange}
-          placeholder="Thumbnail URL"
-          className="w-full border rounded-lg p-3"
-        />
-
-        {/* Tags */}
         <input
           name="tags"
           value={form.tags}
           onChange={handleChange}
-          placeholder="tags (comma separated)"
+          placeholder="Tags (comma separated)"
           className="w-full border rounded-lg p-3"
         />
 
-        {/* Physical only */}
         {productType === "physical" && (
           <div className="grid md:grid-cols-2 gap-4">
             <input
               name="inventory"
               value={form.inventory}
               onChange={handleChange}
-              placeholder="Inventory"
+              placeholder="Quantity Available"
               className="border rounded-lg p-3"
             />
 
@@ -158,7 +225,7 @@ export default function SellPage() {
               name="weight"
               value={form.weight}
               onChange={handleChange}
-              placeholder="Weight"
+              placeholder="Weight (kg)"
               className="border rounded-lg p-3"
             />
 
@@ -181,11 +248,13 @@ export default function SellPage() {
         )}
 
         <button
-          disabled={loading}
           type="submit"
+          disabled={loading}
           className="w-full bg-blue-600 text-white rounded-lg p-4 font-semibold"
         >
-          {loading ? "Listing..." : "List Product"}
+          {loading
+            ? "Creating Listing..."
+            : "List Item"}
         </button>
       </form>
     </div>
