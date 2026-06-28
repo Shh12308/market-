@@ -1,174 +1,123 @@
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+'use client';
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+import { useEffect, useState } from 'react';
+import OrdersTable from '@/components/seller/OrdersTable';
+import Sidebar from '@/components/seller/Sidebar';
+import Header from '@/components/seller/Header';
+import { Download, FileText } from 'lucide-react';
 
-export default async function OrdersPage() {
-  const session = await auth();
+export default function OrdersPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  if (!session?.user?.email) {
-    return (
-      <div className="max-w-7xl mx-auto p-8">
-        <h1 className="text-3xl font-bold mb-4">Orders</h1>
-        <p>Please sign in to view your orders.</p>
-      </div>
-    );
-  }
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const user = await prisma.user.findUnique({
-    where: {
-      email: session.user.email,
-    },
-  });
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
 
-  if (!user) {
-    return (
-      <div className="max-w-7xl mx-auto p-8">
-        <h1 className="text-3xl font-bold mb-4">Orders</h1>
-        <p>User account not found.</p>
-      </div>
-    );
-  }
+        const res = await fetch('/api/orders', {
+          method: 'GET',
+          cache: 'no-store',
+        });
 
-  const store = await prisma.store.findFirst({
-    where: {
-      userId: user.id,
-    },
-  });
+        if (!res.ok) {
+          throw new Error('Failed to fetch orders');
+        }
 
-  if (!store) {
-    return (
-      <div className="max-w-7xl mx-auto p-8">
-        <h1 className="text-3xl font-bold mb-4">Orders</h1>
-        <p>You do not have a store yet.</p>
-      </div>
-    );
-  }
+        const data = await res.json();
 
-  const orders = await prisma.order.findMany({
-    where: {
-      storeId: store.id,
-    },
-    include: {
-      buyer: true,
-      items: {
-        include: {
-          product: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
+        // Adjust depending on your API response shape
+        setOrders(data.orders || data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const totalRevenue = orders.reduce(
-    (sum, order) => sum + Number(order.total),
-    0
-  );
+    fetchOrders();
+  }, []);
+
+  // Example stats
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter((o: any) => o.status === 'pending').length;
+  const toShip = orders.filter((o: any) => o.status === 'processing').length;
+  const completed = orders.filter((o: any) => o.status === 'completed').length;
 
   return (
-    <div className="max-w-7xl mx-auto p-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">
-            Store Orders
-          </h1>
+    <div className="flex min-h-screen">
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
 
-          <p className="text-gray-400 mt-2">
-            Manage customer purchases and fulfillment.
-          </p>
-        </div>
+      <div className="flex-1 lg:ml-64 min-h-screen flex flex-col">
+        <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
-        <div className="mt-4 md:mt-0">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <p className="text-sm text-gray-400">Total Revenue</p>
-            <p className="text-2xl font-bold text-green-500">
-              ${totalRevenue.toFixed(2)}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {orders.length === 0 ? (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
-          <p className="text-gray-400">No orders found.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div
-              key={order.id}
-              className="bg-zinc-900 border border-zinc-800 rounded-xl p-6"
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <h2 className="font-semibold text-lg text-white">
-                    Order #{order.id.slice(0, 8)}
-                  </h2>
-
-                  <p className="text-sm text-gray-400">
-                    Buyer:{" "}
-                    {order.buyer.username ||
-                      order.buyer.name ||
-                      order.buyer.email}
-                  </p>
-
-                  <p className="text-sm text-gray-500">
-                    {new Date(order.createdAt).toLocaleString()}
-                  </p>
-                </div>
-
-                <div className="flex flex-col items-start lg:items-end">
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      order.status === "DELIVERED"
-                        ? "bg-green-500/20 text-green-400"
-                        : order.status === "SHIPPED"
-                        ? "bg-blue-500/20 text-blue-400"
-                        : order.status === "PAID"
-                        ? "bg-yellow-500/20 text-yellow-400"
-                        : order.status === "CANCELLED"
-                        ? "bg-red-500/20 text-red-400"
-                        : "bg-zinc-700 text-gray-300"
-                    }`}
-                  >
-                    {order.status}
-                  </span>
-
-                  <p className="text-xl font-bold text-white mt-2">
-                    ${Number(order.total).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-6 border-t border-zinc-800 pt-4">
-                <h3 className="text-sm font-medium text-gray-300 mb-3">
-                  Items
-                </h3>
-
-                <div className="space-y-2">
-                  {order.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span className="text-white">
-                        {item.product.title}
-                      </span>
-
-                      <span className="text-gray-400">
-                        Qty: {item.quantity}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+        <main className="flex-1 p-4 lg:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+                Order <span className="gradient-text">Management</span>
+              </h1>
+              <p className="text-[var(--text-dim)] text-sm mt-1.5">
+                Track shipments, manage fulfillment, and handle crypto payments.
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className="flex gap-3">
+              <button className="secondary-btn flex items-center gap-2">
+                <Download className="w-4 h-4" /> Export CSV
+              </button>
+              <button className="secondary-btn flex items-center gap-2">
+                <FileText className="w-4 h-4" /> Print Labels
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="card p-4">
+              <p className="text-sm text-[var(--text-dim)]">Total Orders</p>
+              <p className="text-2xl font-extrabold text-white mt-1">
+                {loading ? '...' : totalOrders}
+              </p>
+            </div>
+
+            <div className="card p-4">
+              <p className="text-sm text-[var(--text-dim)]">Pending Action</p>
+              <p className="text-2xl font-extrabold text-[var(--warning)] mt-1">
+                {loading ? '...' : pendingOrders}
+              </p>
+            </div>
+
+            <div className="card p-4">
+              <p className="text-sm text-[var(--text-dim)]">To Ship</p>
+              <p className="text-2xl font-extrabold text-[var(--primary)] mt-1">
+                {loading ? '...' : toShip}
+              </p>
+            </div>
+
+            <div className="card p-4">
+              <p className="text-sm text-[var(--text-dim)]">Completed</p>
+              <p className="text-2xl font-extrabold text-[var(--success)] mt-1">
+                {loading ? '...' : completed}
+              </p>
+            </div>
+          </div>
+
+          {error ? (
+            <div className="text-red-500">{error}</div>
+          ) : (
+            <OrdersTable
+              orders={orders}
+              loading={loading}
+            />
+          )}
+        </main>
+      </div>
     </div>
   );
 }
