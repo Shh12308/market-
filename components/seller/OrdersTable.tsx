@@ -1,283 +1,104 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import useSWR from 'swr';
-import fetcher from '@/lib/fetcher';
+import { useState } from 'react';
 import {
-  ArrowUpDown,
-  MoreHorizontal,
+  Copy,
   ChevronLeft,
   ChevronRight,
-  Copy,
+  MoreHorizontal,
   Eye,
   ExternalLink,
-  AlertCircle,
 } from 'lucide-react';
 
-type CopyButtonProps = {
-  text: string;
+type Order = {
+  id: string;
+  txHash?: string;
+  status: string;
+  date?: string;
+  amount?: any;
+  buyer?: {
+    name?: string;
+  };
+  item?: {
+    name?: string;
+  };
 };
 
-const statusFilters = [
-  { label: 'All', value: 'all' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Processing', value: 'shipped' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Escrow', value: 'escrow' },
-];
+type Props = {
+  orders: Order[];
+  loading: boolean;
+};
 
-function CopyButton({ text }: CopyButtonProps) {
+function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
 
   return (
-    <button
-      onClick={handleCopy}
-      className="inline-flex items-center justify-center w-4 h-4 text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors"
-      title="Copy hash"
-    >
-      {copied ? (
-        <span className="text-[var(--success)] text-[0.6rem] font-bold">✓</span>
-      ) : (
-        <Copy className="w-3 h-3" />
-      )}
+    <button onClick={handleCopy} className="text-xs">
+      {copied ? '✓' : <Copy className="w-3 h-3" />}
     </button>
   );
 }
 
-function ActionsDropdown({ orderId }: { orderId: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
+export default function OrdersTable({ orders, loading }: Props) {
+  if (loading) return <div className="p-6">Loading...</div>;
 
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  if (!orders?.length) {
+    return <div className="p-6 text-sm text-gray-400">No orders</div>;
+  }
 
   return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--text-muted)] hover:bg-[var(--surface-3)] transition-all"
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </button>
+    <div className="overflow-x-auto">
+      <table className="dark-table">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Item</th>
+            <th>Buyer</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th />
+          </tr>
+        </thead>
 
-      {open && (
-        <div className="dropdown-menu right-0 w-48">
-          <button className="dropdown-item">
-            <Eye className="w-4 h-4" />
-            View Details
-          </button>
-          <button className="dropdown-item">
-            <ExternalLink className="w-4 h-4" />
-            View on Chain
-          </button>
-          <div className="dropdown-divider" />
-          <button className="dropdown-item danger">Issue Refund</button>
-        </div>
-      )}
-    </div>
-  );
-}
+        <tbody>
+          {orders.map((order) => (
+            <tr key={order.id}>
+              <td className="font-mono text-xs text-primary">
+                {order.id}
+                {order.txHash && (
+                  <div className="flex gap-1 items-center">
+                    <span className="text-[10px]">{order.txHash}</span>
+                    <CopyButton text={order.txHash} />
+                  </div>
+                )}
+              </td>
 
-function TableSkeleton() {
-  return (
-    <div className="p-6 space-y-4">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4">
-          <div className="w-20 h-4 dark-skeleton" />
-          <div className="flex-1 h-4 dark-skeleton" />
-          <div className="w-24 h-4 dark-skeleton hidden sm:block" />
-          <div className="w-20 h-4 dark-skeleton" />
-          <div className="w-16 h-5 dark-skeleton" />
-          <div className="w-16 h-4 dark-skeleton hidden md:block" />
-          <div className="w-8 h-4 dark-skeleton" />
-        </div>
-      ))}
-    </div>
-  );
-}
+              <td>{order.item?.name ?? '-'}</td>
+              <td>{order.buyer?.name ?? '-'}</td>
+              <td>{order.amount?.crypto ?? '-'}</td>
 
-export default function OrdersTable() {
-  const [status, setStatus] = useState('all');
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState('date');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+              <td>
+                <span className={`status-pill status-${order.status}`}>
+                  {order.status}
+                </span>
+              </td>
 
-  const { data, error, isLoading, mutate } = useSWR(
-    `/api/seller/orders?status=${status}&page=${page}&sort=${sortKey}&dir=${sortDir}`,
-    fetcher,
-    { keepPreviousData: true }
-  );
-
-  const orders = data?.orders ?? [];
-  const totalPages = data?.totalPages ?? 1;
-  const total = data?.total ?? 0;
-
-  const handleSort = (key: string) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir('desc');
-    }
-    setPage(1);
-  };
-
-  const handleStatusChange = (val: string) => {
-    setStatus(val);
-    setPage(1);
-  };
-
-  return (
-    <div className="card overflow-visible">
-      <div className="p-5 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-lg font-bold text-white">Recent Orders</h3>
-          <p className="text-sm text-[var(--text-dim)] mt-0.5">
-            {total} total orders
-          </p>
-        </div>
-
-        <div className="tabs-pills overflow-x-auto no-scrollbar">
-          {statusFilters.map((f) => (
-            <button
-              key={f.value}
-              className={`tab whitespace-nowrap ${
-                status === f.value ? 'active' : ''
-              }`}
-              onClick={() => handleStatusChange(f.value)}
-            >
-              {f.label}
-            </button>
+              <td>
+                <button>
+                  <MoreHorizontal className="w-4 h-4" />
+                </button>
+              </td>
+            </tr>
           ))}
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        {error ? (
-          <div className="p-10 flex flex-col items-center justify-center text-center">
-            <AlertCircle className="w-8 h-8 text-[var(--danger)] mb-3" />
-            <p className="text-sm text-[var(--danger)] font-medium mb-1">
-              Failed to load orders
-            </p>
-            <button onClick={() => mutate()} className="btn btn-sm btn-outline mt-3">
-              Retry
-            </button>
-          </div>
-        ) : isLoading && !data ? (
-          <TableSkeleton />
-        ) : orders.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-sm text-[var(--text-dim)]">No orders found</p>
-          </div>
-        ) : (
-          <table className="dark-table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th className="hidden lg:table-cell">Item</th>
-                <th className="hidden md:table-cell">Buyer</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th className="hidden sm:table-cell">Date</th>
-                <th className="w-10" />
-              </tr>
-            </thead>
-
-            <tbody>
-              {orders.map((order: any) => (
-                <tr key={order.id}>
-                  <td>
-                    <div className="flex flex-col gap-1">
-                      <span className="font-mono text-xs text-[var(--primary)] font-semibold">
-                        {order.id}
-                      </span>
-
-                      {order.txHash && (
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono text-[0.65rem] text-[var(--text-faint)]">
-                            {order.txHash}
-                          </span>
-                          <CopyButton text={order.txHash} />
-                        </div>
-                      )}
-                    </div>
-                  </td>
-
-                  <td className="hidden lg:table-cell">
-                    <span>{order.item?.name}</span>
-                  </td>
-
-                  <td className="hidden md:table-cell">
-                    {order.buyer?.name}
-                  </td>
-
-                  <td>{order.amount?.crypto}</td>
-
-                  <td>
-                    <span className={`status-pill status-${order.status}`}>
-                      {order.status}
-                    </span>
-                  </td>
-
-                  <td className="hidden sm:table-cell">
-                    {order.date}
-                  </td>
-
-                  <td>
-                    <ActionsDropdown orderId={order.id} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between p-4 border-t border-[var(--border)]">
-          <span className="text-xs text-[var(--text-faint)]">
-            Page {page} of {totalPages}
-          </span>
-
-          <div className="pagination">
-            <button
-              className="page-btn"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            <button
-              className="page-btn"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
+        </tbody>
+      </table>
     </div>
   );
 }
