@@ -1,13 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import useSWR from 'swr';
+import fetcher from '@/lib/fetcher';
+
 import StatsCards from '@/components/seller/StatsCards';
 import RevenueChart from '@/components/seller/RevenueChart';
 import OrdersTable from '@/components/seller/OrdersTable';
 import Sidebar from '@/components/seller/Sidebar';
 import Header from '@/components/seller/Header';
 import {
-  Plus, ArrowDownToLine, BarChart3, ChevronRight,
+  Plus,
+  ArrowDownToLine,
+  BarChart3,
+  ChevronRight,
 } from 'lucide-react';
 
 const quickActions = [
@@ -44,10 +50,16 @@ const healthMetrics = [
 export default function SellerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // ✅ FETCH ORDERS HERE
+  const { data, isLoading } = useSWR('/api/seller/orders', fetcher);
+
+  const orders = data?.orders ?? [];
+
   const now = new Date();
   const hour = now.getHours();
   const greeting =
     hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
   const dateStr = now.toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
@@ -86,6 +98,7 @@ export default function SellerDashboard() {
 
             <div className="card p-6 flex flex-col">
               <h3 className="text-lg font-bold text-white mb-5">Quick Actions</h3>
+
               <div className="space-y-2.5 flex-1">
                 {quickActions.map((action) => (
                   <button
@@ -98,10 +111,12 @@ export default function SellerDashboard() {
                     >
                       <action.icon className="w-4 h-4" style={{ color: action.color }} />
                     </div>
+
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-white">{action.label}</div>
                       <div className="text-xs text-[var(--text-faint)] mt-0.5">{action.desc}</div>
                     </div>
+
                     <ChevronRight className="w-4 h-4 text-[var(--text-faint)] opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                   </button>
                 ))}
@@ -112,6 +127,7 @@ export default function SellerDashboard() {
                 <h4 className="text-xs font-bold text-[var(--text-faint)] tracking-[0.06em] uppercase mb-4">
                   Store Health
                 </h4>
+
                 <div className="space-y-3.5">
                   {healthMetrics.map((m) => (
                     <div key={m.label}>
@@ -126,6 +142,7 @@ export default function SellerDashboard() {
                           {m.status}
                         </span>
                       </div>
+
                       <div className="progress-bar">
                         <div
                           className={`progress-fill ${m.cssClass}`}
@@ -140,7 +157,7 @@ export default function SellerDashboard() {
           </div>
 
           {/* Orders */}
-          <OrdersTable />
+          <OrdersTable orders={orders} loading={isLoading} />
         </main>
       </div>
     </div>
