@@ -5,52 +5,47 @@ import OrdersTable from '@/components/seller/OrdersTable';
 import Sidebar from '@/components/seller/Sidebar';
 import Header from '@/components/seller/Header';
 import { Download, FileText } from 'lucide-react';
-import { BACKEND_URL } from '../utils/api';
-
-interface OrderStats {
-  totalOrders: number;
-  pendingAction: number;
-  toShip: number;
-  completed: number;
-}
 
 export default function OrdersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [stats, setStats] = useState<OrderStats>({
-    totalOrders: 0,
-    pendingAction: 0,
-    toShip: 0,
-    completed: 0,
-  });
-
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchOrderStats = async () => {
+    const fetchOrders = async () => {
       try {
-        const res = await fetch(`${BACKEND_URL}/orders/stats`, {
-          headers: {
-            'Content-Type': 'application/json',
-            // Authorization: `Bearer ${localStorage.getItem('token')}`, // if needed
-          },
+        setLoading(true);
+
+        const res = await fetch('/api/orders', {
+          method: 'GET',
+          cache: 'no-store',
         });
 
         if (!res.ok) {
-          throw new Error('Failed to fetch order stats');
+          throw new Error('Failed to fetch orders');
         }
 
         const data = await res.json();
-        setStats(data);
+
+        // Adjust depending on your API response shape
+        setOrders(data.orders || data);
       } catch (err) {
-        console.error(err);
+        setError(err instanceof Error ? err.message : 'Something went wrong');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOrderStats();
+    fetchOrders();
   }, []);
+
+  // Example stats
+  const totalOrders = orders.length;
+  const pendingOrders = orders.filter((o: any) => o.status === 'pending').length;
+  const toShip = orders.filter((o: any) => o.status === 'processing').length;
+  const completed = orders.filter((o: any) => o.status === 'completed').length;
 
   return (
     <div className="flex min-h-screen">
@@ -84,36 +79,43 @@ export default function OrdersPage() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="card p-4 hover:border-[var(--primary)] transition-colors">
+            <div className="card p-4">
               <p className="text-sm text-[var(--text-dim)]">Total Orders</p>
               <p className="text-2xl font-extrabold text-white mt-1">
-                {loading ? '...' : stats.totalOrders}
+                {loading ? '...' : totalOrders}
               </p>
             </div>
 
-            <div className="card p-4 hover:border-[var(--warning)] transition-colors">
+            <div className="card p-4">
               <p className="text-sm text-[var(--text-dim)]">Pending Action</p>
               <p className="text-2xl font-extrabold text-[var(--warning)] mt-1">
-                {loading ? '...' : stats.pendingAction}
+                {loading ? '...' : pendingOrders}
               </p>
             </div>
 
-            <div className="card p-4 hover:border-[var(--primary)] transition-colors">
+            <div className="card p-4">
               <p className="text-sm text-[var(--text-dim)]">To Ship</p>
               <p className="text-2xl font-extrabold text-[var(--primary)] mt-1">
-                {loading ? '...' : stats.toShip}
+                {loading ? '...' : toShip}
               </p>
             </div>
 
-            <div className="card p-4 hover:border-[var(--success)] transition-colors">
+            <div className="card p-4">
               <p className="text-sm text-[var(--text-dim)]">Completed</p>
               <p className="text-2xl font-extrabold text-[var(--success)] mt-1">
-                {loading ? '...' : stats.completed}
+                {loading ? '...' : completed}
               </p>
             </div>
           </div>
 
-          <OrdersTable />
+          {error ? (
+            <div className="text-red-500">{error}</div>
+          ) : (
+            <OrdersTable
+              orders={orders}
+              loading={loading}
+            />
+          )}
         </main>
       </div>
     </div>
