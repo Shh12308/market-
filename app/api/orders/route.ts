@@ -16,13 +16,25 @@ export async function GET() {
     }
 
     const orders = await prisma.order.findMany({
-      where: {
-        userId: session.user.id,
+  where: {
+    store: {
+      userId: session.user.id,
+    },
+  },
+  include: {
+    buyer: true,
+    items: {
+      include: {
+        product: true,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    },
+    store: true,
+    txs: true,
+  },
+  orderBy: {
+    createdAt: 'desc',
+  },
+});
 
     return NextResponse.json({ orders });
   } catch (err) {
