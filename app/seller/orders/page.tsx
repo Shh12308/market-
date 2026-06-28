@@ -1,104 +1,39 @@
 'use client';
 
+import useSWR from 'swr';
+import fetcher from '@/lib/fetcher';
 import { useState } from 'react';
-import {
-  Copy,
-  ChevronLeft,
-  ChevronRight,
-  MoreHorizontal,
-  Eye,
-  ExternalLink,
-} from 'lucide-react';
 
-type Order = {
-  id: string;
-  txHash?: string;
-  status: string;
-  date?: string;
-  amount?: any;
-  buyer?: {
-    name?: string;
-  };
-  item?: {
-    name?: string;
-  };
-};
+import OrdersTable from '@/components/seller/OrdersTable';
+import Sidebar from '@/components/seller/Sidebar';
+import Header from '@/components/seller/Header';
 
-type Props = {
-  orders: Order[];
-  loading: boolean;
-};
+export default function SellerOrdersPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
+  const { data, isLoading } = useSWR('/api/seller/orders', fetcher);
 
   return (
-    <button onClick={handleCopy} className="text-xs">
-      {copied ? '✓' : <Copy className="w-3 h-3" />}
-    </button>
-  );
-}
+    <div className="flex min-h-screen">
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
 
-export default function OrdersTable({ orders, loading }: Props) {
-  if (loading) return <div className="p-6">Loading...</div>;
+      <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
+        <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
 
-  if (!orders?.length) {
-    return <div className="p-6 text-sm text-gray-400">No orders</div>;
-  }
+        <main className="p-6">
+          <h1 className="text-2xl font-bold text-white mb-6">
+            Order Management
+          </h1>
 
-  return (
-    <div className="overflow-x-auto">
-      <table className="dark-table">
-        <thead>
-          <tr>
-            <th>Order</th>
-            <th>Item</th>
-            <th>Buyer</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th />
-          </tr>
-        </thead>
-
-        <tbody>
-          {orders.map((order) => (
-            <tr key={order.id}>
-              <td className="font-mono text-xs text-primary">
-                {order.id}
-                {order.txHash && (
-                  <div className="flex gap-1 items-center">
-                    <span className="text-[10px]">{order.txHash}</span>
-                    <CopyButton text={order.txHash} />
-                  </div>
-                )}
-              </td>
-
-              <td>{order.item?.name ?? '-'}</td>
-              <td>{order.buyer?.name ?? '-'}</td>
-              <td>{order.amount?.crypto ?? '-'}</td>
-
-              <td>
-                <span className={`status-pill status-${order.status}`}>
-                  {order.status}
-                </span>
-              </td>
-
-              <td>
-                <button>
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+          <OrdersTable
+            orders={data?.orders ?? []}
+            loading={isLoading}
+          />
+        </main>
+      </div>
     </div>
   );
 }
