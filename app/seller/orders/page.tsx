@@ -1,17 +1,63 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import OrdersTable from '@/components/seller/OrdersTable';
 import Sidebar from '@/components/seller/Sidebar';
 import Header from '@/components/seller/Header';
 import { Download, FileText } from 'lucide-react';
+import { BACKEND_URL } from '../utils/api';
+
+interface OrderStats {
+  totalOrders: number;
+  pendingAction: number;
+  toShip: number;
+  completed: number;
+}
 
 export default function OrdersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const [stats, setStats] = useState<OrderStats>({
+    totalOrders: 0,
+    pendingAction: 0,
+    toShip: 0,
+    completed: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrderStats = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/orders/stats`, {
+          headers: {
+            'Content-Type': 'application/json',
+            // Authorization: `Bearer ${localStorage.getItem('token')}`, // if needed
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch order stats');
+        }
+
+        const data = await res.json();
+        setStats(data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderStats();
+  }, []);
+
   return (
     <div className="flex min-h-screen">
-      <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+      />
 
       <div className="flex-1 lg:ml-64 min-h-screen flex flex-col">
         <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
@@ -26,6 +72,7 @@ export default function OrdersPage() {
                 Track shipments, manage fulfillment, and handle crypto payments.
               </p>
             </div>
+
             <div className="flex gap-3">
               <button className="secondary-btn flex items-center gap-2">
                 <Download className="w-4 h-4" /> Export CSV
@@ -37,21 +84,32 @@ export default function OrdersPage() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="card p-4 cursor-pointer hover:border-[var(--primary)] transition-colors">
+            <div className="card p-4 hover:border-[var(--primary)] transition-colors">
               <p className="text-sm text-[var(--text-dim)]">Total Orders</p>
-              <p className="text-2xl font-extrabold text-white mt-1">1,245</p>
+              <p className="text-2xl font-extrabold text-white mt-1">
+                {loading ? '...' : stats.totalOrders}
+              </p>
             </div>
-            <div className="card p-4 cursor-pointer hover:border-[var(--warning)] transition-colors">
+
+            <div className="card p-4 hover:border-[var(--warning)] transition-colors">
               <p className="text-sm text-[var(--text-dim)]">Pending Action</p>
-              <p className="text-2xl font-extrabold text-[var(--warning)] mt-1">12</p>
+              <p className="text-2xl font-extrabold text-[var(--warning)] mt-1">
+                {loading ? '...' : stats.pendingAction}
+              </p>
             </div>
-            <div className="card p-4 cursor-pointer hover:border-[var(--primary)] transition-colors">
+
+            <div className="card p-4 hover:border-[var(--primary)] transition-colors">
               <p className="text-sm text-[var(--text-dim)]">To Ship</p>
-              <p className="text-2xl font-extrabold text-[var(--primary)] mt-1">45</p>
+              <p className="text-2xl font-extrabold text-[var(--primary)] mt-1">
+                {loading ? '...' : stats.toShip}
+              </p>
             </div>
-            <div className="card p-4 cursor-pointer hover:border-[var(--success)] transition-colors">
+
+            <div className="card p-4 hover:border-[var(--success)] transition-colors">
               <p className="text-sm text-[var(--text-dim)]">Completed</p>
-              <p className="text-2xl font-extrabold text-[var(--success)] mt-1">1,188</p>
+              <p className="text-2xl font-extrabold text-[var(--success)] mt-1">
+                {loading ? '...' : stats.completed}
+              </p>
             </div>
           </div>
 
