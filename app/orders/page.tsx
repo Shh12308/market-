@@ -1,9 +1,9 @@
 'use client';
 
-import OrdersTable from '@/components/buyer/OrdersTable';
-import Sidebar from '@/components/buyer/Sidebar';
-import Header from '@/components/buyer/Header';
 import { useState } from 'react';
+import OrdersTable from '@/components/seller/OrdersTable';
+import Sidebar from '@/components/seller/Sidebar';
+import Header from '@/components/seller/Header';
 
 export default function BuyerOrdersPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
