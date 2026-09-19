@@ -1,45 +1,84 @@
 "use server";
 
-import { signIn } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import argon2 from "argon2";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
-// Add 'prevState' as the first argument
-export async function loginAction(prevState: any, formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  try {
-    await signIn("credentials", {
-      email,
-      password,
-      redirectTo: "/seller",
-    });
-  } catch (error) {
-    return { error: "Invalid credentials" };
-  }
-}
-
-// Add 'prevState' as the first argument
-export async function registerAction(prevState: any, formData: FormData) {
-  const username = formData.get("username") as string;
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const confirmPassword = formData.get("confirmPassword") as string;
-
-  if (password !== confirmPassword) {
-    return { error: "Passwords do not match" };
-  }
-
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, email, password }),
+const registerSchema = z
+  .object({
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
   });
 
-  if (!res.ok) {
-    const data = await res.json();
-    return { error: data.error || "Registration failed" };
+export async function registerAction(
+  _prevState: unknown,
+  formData: FormData
+) {
+  const parsed = registerSchema.safeParse({
+    username: formData.get("username"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  // IMPORTANT: return a STRING, not parsed.error
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid input",
+    };
   }
 
+  const {
+    username,
+    email,
+    password,
+  } = parsed.data;
+
+  try {
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return {
+        error: "An account with this email already exists.",
+      };
+    }
+
+    const existingUsername = await prisma.user.findUnique({
+      where: { username },
+    });
+
+    if (existingUsername) {
+      return {
+        error: "That username is already taken.",
+      };
+    }
+
+    const passwordHash = await argon2.hash(password);
+
+    await prisma.user.create({
+      data: {
+        username,
+        email,
+        passwordHash,
+      },
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+
+    return {
+      error: "Something went wrong while creating your account.",
+    };
+  }
+
+  // IMPORTANT: keep redirect OUTSIDE the try/catch
   redirect("/login");
 }
