@@ -1,114 +1,84 @@
-"use server";
-
+import NextAuth from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
-import { signIn } from "@/auth";
-import { redirect } from "next/navigation";
-import { z } from "zod";
 import argon2 from "argon2";
 
-const registerSchema = z
-  .object({
-    username: z.string().min(3, "Username must be at least 3 characters"),
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: PrismaAdapter(prisma),
 
-export async function registerAction(
-  _prevState: unknown,
-  formData: FormData
-) {
-  const parsed = registerSchema.safeParse({
-    username: formData.get("username"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-    confirmPassword: formData.get("confirmPassword"),
-  });
+  session: {
+    strategy: "jwt",
+  },
 
-  if (!parsed.success) {
-    return {
-      error: parsed.error.issues[0]?.message ?? "Invalid input",
-    };
-  }
+  pages: {
+    signIn: "/login",
+  },
 
-  const { username, email, password } = parsed.data;
+  providers: [
+    CredentialsProvider({
+      name: "Credentials",
 
-  try {
-    const existingEmail = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingEmail) {
-      return {
-        error: "An account with this email already exists.",
-      };
-    }
-
-    const existingUsername = await prisma.user.findUnique({
-      where: { username },
-    });
-
-    if (existingUsername) {
-      return {
-        error: "That username is already taken.",
-      };
-    }
-
-    const passwordHash = await argon2.hash(password);
-
-    await prisma.user.create({
-      data: {
-        username,
-        email,
-        passwordHash,
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
 
-    return {
-      error: "Something went wrong while creating your account.",
-    };
-  }
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
 
-  redirect("/login");
-}
+        const email = credentials.email as string;
+        const password = credentials.password as string;
 
-export async function loginAction(
-  _prevState: unknown,
-  formData: FormData
-) {
-  try {
-    await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
-      redirectTo: "/",
-    });
+        const user = await prisma.user.findUnique({
+          where: { email },
+        });
 
-    return {
-      error: "",
-    };
-  } catch (error) {
-    // NextAuth uses a thrown redirect internally.
-    // Re-throw it so Next.js can perform the redirect.
-    if (
-      error &&
-      typeof error === "object" &&
-      "digest" in error &&
-      typeof error.digest === "string" &&
-      error.digest.startsWith("NEXT_REDIRECT")
-    ) {
-      throw error;
-    }
+        if (!user || !user.passwordHash) {
+          return null;
+        }
 
-    console.error("Login error:", error);
+        const isValid = await argon2.verify(
+          user.passwordHash,
+          password
+        );
 
-    return {
-      error: "Invalid email or password.",
-    };
-  }
-}
+        if (!isValid) {
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          username: user.username ?? null,
+          role: user.role,
+          image: user.image ?? null,
+        };
+      },
+    }),
+  ],
+
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as any).role;
+        token.username = (user as any).username;
+      }
+
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
+        (session.user as any).username = token.username;
+      }
+
+      return session;
+    },
+  },
+});
