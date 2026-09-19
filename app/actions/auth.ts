@@ -1,9 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import argon2 from "argon2";
+import { signIn } from "@/auth";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import argon2 from "argon2";
 
 const registerSchema = z
   .object({
@@ -28,25 +29,20 @@ export async function registerAction(
     confirmPassword: formData.get("confirmPassword"),
   });
 
-  // IMPORTANT: return a STRING, not parsed.error
   if (!parsed.success) {
     return {
       error: parsed.error.issues[0]?.message ?? "Invalid input",
     };
   }
 
-  const {
-    username,
-    email,
-    password,
-  } = parsed.data;
+  const { username, email, password } = parsed.data;
 
   try {
-    const existingUser = await prisma.user.findUnique({
+    const existingEmail = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (existingUser) {
+    if (existingEmail) {
       return {
         error: "An account with this email already exists.",
       };
@@ -79,6 +75,40 @@ export async function registerAction(
     };
   }
 
-  // IMPORTANT: keep redirect OUTSIDE the try/catch
   redirect("/login");
+}
+
+export async function loginAction(
+  _prevState: unknown,
+  formData: FormData
+) {
+  try {
+    await signIn("credentials", {
+      email: formData.get("email"),
+      password: formData.get("password"),
+      redirectTo: "/",
+    });
+
+    return {
+      error: "",
+    };
+  } catch (error) {
+    // NextAuth uses a thrown redirect internally.
+    // Re-throw it so Next.js can perform the redirect.
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof error.digest === "string" &&
+      error.digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    console.error("Login error:", error);
+
+    return {
+      error: "Invalid email or password.",
+    };
+  }
 }
