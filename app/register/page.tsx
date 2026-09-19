@@ -10,13 +10,34 @@ export default function RegisterPage() {
     e: React.FormEvent<HTMLFormElement>
   ) {
     e.preventDefault();
+    setError("");
 
     const formData = new FormData(e.currentTarget);
 
     const result = await registerAction(null, formData);
 
     if (result?.error) {
-      setError(result.error);
+      if (typeof result.error === "string") {
+        setError(result.error);
+      } else if (Array.isArray(result.error)) {
+        setError(
+          result.error
+            .map((issue) =>
+              typeof issue === "string"
+                ? issue
+                : issue.message
+            )
+            .filter(Boolean)
+            .join(", ")
+        );
+      } else if (
+        typeof result.error === "object" &&
+        "message" in result.error
+      ) {
+        setError(String(result.error.message));
+      } else {
+        setError("Registration failed");
+      }
     }
   }
 
